@@ -1,0 +1,20 @@
+{
+  "name": "claude-ultimate-hud",
+  "version": "1.0.0",
+  "description": "Ultimate status line combining rate limits, cost tracking, project info, tool activity, and todo progress",
+  "author": {
+    "name": "songhyeon-u"
+  },
+  "repository": "https://github.com/songhyeon-u/claude-ultimate-hud",
+  "license": "MIT",
+  "keywords": [
+    "statusline",
+    "hud",
+    "rate-limits",
+    "cost",
+    "tools",
+    "agents",
+    "todos",
+    "i18n"
+  ]
+}

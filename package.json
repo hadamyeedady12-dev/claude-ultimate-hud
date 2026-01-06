@@ -1,0 +1,24 @@
+{
+  "name": "claude-ultimate-hud",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Ultimate status line combining claude-dashboard rate limits with claude-hud activity tracking",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "bun build src/index.ts --outfile=dist/index.js --target=node",
+    "test": "echo '{\"model\":{\"display_name\":\"Opus\"},\"cwd\":\"/Users/test/project\",\"transcript_path\":\"\",\"context_window\":{\"context_window_size\":200000,\"current_usage\":{\"input_tokens\":50000,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0}},\"cost\":{\"total_cost_usd\":0.5}}' | bun dist/index.js"
+  },
+  "keywords": [
+    "claude-code",
+    "statusline",
+    "hud",
+    "rate-limits",
+    "context"
+  ],
+  "author": "Combined from claude-dashboard & claude-hud",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
