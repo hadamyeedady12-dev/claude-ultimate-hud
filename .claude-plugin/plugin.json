@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Ultimate status line combining rate limits, cost tracking, project info, tool activity, and todo progress",
   "author": {
-    "name": "songhyeon-u"
+    "name": "hadamyeedady12-dev"
   },
-  "repository": "https://github.com/songhyeon-u/claude-ultimate-hud",
+  "repository": "https://github.com/hadamyeedady12-dev/claude-ultimate-hud",
   "license": "MIT",
   "keywords": [
     "statusline",

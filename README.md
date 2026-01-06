@@ -37,7 +37,7 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 ### From Plugin Marketplace
 
 ```
-/plugin marketplace add songhyeon-u/claude-ultimate-hud
+/plugin marketplace add hadamyeedady12-dev/claude-ultimate-hud
 /plugin install claude-ultimate-hud
 /claude-ultimate-hud:setup
 ```
@@ -45,7 +45,7 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 ### Manual Installation
 
 ```bash
-git clone https://github.com/songhyeon-u/claude-ultimate-hud.git ~/.claude/plugins/claude-ultimate-hud
+git clone https://github.com/hadamyeedady12-dev/claude-ultimate-hud.git ~/.claude/plugins/claude-ultimate-hud
 cd ~/.claude/plugins/claude-ultimate-hud
 bun install && bun run build
 ```
