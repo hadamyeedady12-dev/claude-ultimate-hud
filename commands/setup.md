@@ -37,8 +37,23 @@ Create `~/.claude/claude-ultimate-hud.local.json` with user preferences:
 
 ### 2. Update settings.json
 
-Add or update the statusLine configuration in `~/.claude/settings.json`:
+Add or update the statusLine configuration in `~/.claude/settings.json`.
 
+**IMPORTANT**: Check where the plugin is installed and use the correct path:
+- Marketplace install: `~/.claude/plugins/marketplaces/claude-ultimate-hud/`
+- Manual install: `~/.claude/plugins/claude-ultimate-hud/`
+
+For marketplace installation:
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bun ${HOME}/.claude/plugins/marketplaces/claude-ultimate-hud/dist/index.js"
+  }
+}
+```
+
+For manual installation:
 ```json
 {
   "statusLine": {

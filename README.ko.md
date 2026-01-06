@@ -46,6 +46,8 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 /claude-ultimate-hud:setup
 ```
 
+> **참고**: 마켓플레이스 설치 경로는 `~/.claude/plugins/marketplaces/claude-ultimate-hud/`
+
 ### 수동 설치
 
 ```bash

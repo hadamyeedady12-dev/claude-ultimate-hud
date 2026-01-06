@@ -46,6 +46,8 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 /claude-ultimate-hud:setup
 ```
 
+> **Note**: Marketplace installs to `~/.claude/plugins/marketplaces/claude-ultimate-hud/`
+
 ### Manual Installation
 
 ```bash
