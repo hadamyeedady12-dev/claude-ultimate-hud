@@ -4,6 +4,8 @@
 
 Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboard](https://github.com/uppinote20/claude-dashboard)와 [claude-hud](https://github.com/jarrodwatts/claude-hud)의 장점을 결합했습니다.
 
+![스크린샷](assets/screenshot.png)
+
 ## 기능
 
 ### claude-dashboard에서 가져온 기능

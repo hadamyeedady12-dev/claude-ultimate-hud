@@ -4,6 +4,8 @@
 
 Ultimate status line plugin for Claude Code - combines the best of [claude-dashboard](https://github.com/uppinote20/claude-dashboard) and [claude-hud](https://github.com/jarrodwatts/claude-hud).
 
+![Screenshot](assets/screenshot.png)
+
 ## Features
 
 ### From claude-dashboard
