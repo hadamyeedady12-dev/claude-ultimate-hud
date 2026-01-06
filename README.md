@@ -1,5 +1,7 @@
 # claude-ultimate-hud
 
+[English](README.md) | [한국어](README.ko.md)
+
 Ultimate status line plugin for Claude Code - combines the best of [claude-dashboard](https://github.com/uppinote20/claude-dashboard) and [claude-hud](https://github.com/jarrodwatts/claude-hud).
 
 ## Features
