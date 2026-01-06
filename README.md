@@ -70,12 +70,13 @@ Then run:
 | Argument | Options | Default |
 |----------|---------|---------|
 | language | `auto`, `en`, `ko` | `auto` |
-| plan | `max`, `pro` | `max` |
+| plan | `pro`, `max10`, `max20` | `max20` |
 
 Examples:
 ```
-/claude-ultimate-hud:setup ko max   # Korean, Max plan
-/claude-ultimate-hud:setup en pro   # English, Pro plan
+/claude-ultimate-hud:setup ko max20   # Korean, Max 20 plan
+/claude-ultimate-hud:setup en pro     # English, Pro plan
+/claude-ultimate-hud:setup auto max10 # Auto language, Max 10 plan
 ```
 
 ## Requirements
@@ -93,12 +94,12 @@ Examples:
 
 ## Plan Differences
 
-| Feature | Max | Pro |
-|---------|-----|-----|
-| 5h rate limit | ✅ | ✅ |
-| Reset countdown | ✅ | ✅ |
-| 7d all models | ✅ | ❌ |
-| 7d Sonnet only | ✅ | ❌ |
+| Feature | pro | max10 | max20 |
+|---------|-----|-------|-------|
+| 5h rate limit | ✅ | ✅ | ✅ |
+| Reset countdown | ✅ | ✅ | ✅ |
+| 7d all models | ❌ | ✅ | ✅ |
+| 7d Sonnet only | ❌ | ❌ | ✅ |
 
 ## Credits
 

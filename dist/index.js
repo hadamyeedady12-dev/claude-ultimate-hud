@@ -8,7 +8,7 @@ import { homedir as homedir3 } from "os";
 // src/types.ts
 var DEFAULT_CONFIG = {
   language: "auto",
-  plan: "max",
+  plan: "max20",
   cache: {
     ttlSeconds: 60
   }
@@ -520,17 +520,18 @@ function buildRateLimitsSection(ctx, t) {
     }
     parts.push(text);
   }
-  if (ctx.config.plan === "max") {
-    if (limits.seven_day) {
-      const pct = Math.round(limits.seven_day.utilization);
-      const color = getColorForPercent(pct);
-      parts.push(`${t.labels["7d_all"]}: ${colorize(`${pct}%`, color)}`);
-    }
-    if (limits.seven_day_sonnet) {
-      const pct = Math.round(limits.seven_day_sonnet.utilization);
-      const color = getColorForPercent(pct);
-      parts.push(`${t.labels["7d_sonnet"]}: ${colorize(`${pct}%`, color)}`);
-    }
+  const plan = ctx.config.plan;
+  const showSevenDay = plan === "max10" || plan === "max20" || plan === "max";
+  const showSevenDaySonnet = plan === "max20" || plan === "max";
+  if (showSevenDay && limits.seven_day) {
+    const pct = Math.round(limits.seven_day.utilization);
+    const color = getColorForPercent(pct);
+    parts.push(`${t.labels["7d_all"]}: ${colorize(`${pct}%`, color)}`);
+  }
+  if (showSevenDaySonnet && limits.seven_day_sonnet) {
+    const pct = Math.round(limits.seven_day_sonnet.utilization);
+    const color = getColorForPercent(pct);
+    parts.push(`${t.labels["7d_sonnet"]}: ${colorize(`${pct}%`, color)}`);
   }
   return parts.length > 0 ? parts.join(SEP) : null;
 }

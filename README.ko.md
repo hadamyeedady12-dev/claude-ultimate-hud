@@ -70,12 +70,13 @@ bun install && bun run build
 | 인자 | 옵션 | 기본값 |
 |------|------|--------|
 | 언어 | `auto`, `en`, `ko` | `auto` |
-| 플랜 | `max`, `pro` | `max` |
+| 플랜 | `pro`, `max10`, `max20` | `max20` |
 
 예시:
 ```
-/claude-ultimate-hud:setup ko max   # 한국어, Max 플랜
-/claude-ultimate-hud:setup en pro   # 영어, Pro 플랜
+/claude-ultimate-hud:setup ko max20   # 한국어, Max 20 플랜
+/claude-ultimate-hud:setup en pro     # 영어, Pro 플랜
+/claude-ultimate-hud:setup auto max10 # 자동 언어, Max 10 플랜
 ```
 
 ## 요구사항
@@ -93,12 +94,12 @@ bun install && bun run build
 
 ## 플랜별 차이
 
-| 기능 | Max | Pro |
-|------|-----|-----|
-| 5시간 rate limit | ✅ | ✅ |
-| 리셋 카운트다운 | ✅ | ✅ |
-| 7일 전체 모델 | ✅ | ❌ |
-| 7일 Sonnet 전용 | ✅ | ❌ |
+| 기능 | pro | max10 | max20 |
+|------|-----|-------|-------|
+| 5시간 rate limit | ✅ | ✅ | ✅ |
+| 리셋 카운트다운 | ✅ | ✅ | ✅ |
+| 7일 전체 모델 | ❌ | ✅ | ✅ |
+| 7일 Sonnet 전용 | ❌ | ❌ | ✅ |
 
 ## 크레딧
 

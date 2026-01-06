@@ -1,106 +1,134 @@
 ---
-description: Configure claude-ultimate-hud status line settings
+description: Configure claude-ultimate-hud as your statusline
 argument-hint: "[language] [plan]"
-allowed-tools: Read, Write, Bash(jq:*), Bash(cat:*), Bash(mkdir:*)
+allowed-tools: Bash, Read, Edit, Write
 ---
 
 # Claude Ultimate HUD Setup
 
-Configure the claude-ultimate-hud status line plugin.
+Configure the claude-ultimate-hud status line plugin with automatic runtime and platform detection.
 
 ## Arguments
 
 - `$1`: Language preference
   - `auto` (default): Detect from system language
   - `en`: English
-  - `ko`: Korean
+  - `ko`: Korean (한국어)
 
 - `$2`: Subscription plan
-  - `max` (default): Shows 5h + 7d (all models) + 7d-S (Sonnet)
-  - `pro`: Shows 5h only
+  - `pro`: Shows 5h rate limit only
+  - `max10`: Shows 5h + 7d all models (Max 10 plan)
+  - `max20` (default): Shows 5h + 7d all + 7d Sonnet (Max 20 plan)
 
-## Tasks
+## Step 1: Detect Platform & Runtime
 
-### 1. Create configuration file
+**macOS/Linux** (if `uname -s` returns "Darwin", "Linux", or MINGW*/MSYS*/CYGWIN*):
 
-Create `~/.claude/claude-ultimate-hud.local.json` with user preferences:
+1. Get plugin path (check cache/marketplace first, then manual install):
+   ```bash
+   ls -td ~/.claude/plugins/cache/claude-ultimate-hud/claude-ultimate-hud/*/ 2>/dev/null | head -1 || ls -d ~/.claude/plugins/claude-ultimate-hud/ 2>/dev/null
+   ```
+   If empty, plugin is not installed.
+
+2. Get runtime absolute path (prefer bun, fallback to node):
+   ```bash
+   command -v bun 2>/dev/null || command -v node 2>/dev/null
+   ```
+   If empty, tell user to install Node.js or Bun.
+
+3. Determine source file based on runtime:
+   - If runtime is `bun`: use `src/index.ts`
+   - Otherwise: use `dist/index.js`
+
+4. Generate command with dynamic path detection:
+   ```
+   bash -c '"{RUNTIME_PATH}" "$(ls -td ~/.claude/plugins/cache/claude-ultimate-hud/claude-ultimate-hud/*/ 2>/dev/null | head -1 || ls -d ~/.claude/plugins/claude-ultimate-hud/ 2>/dev/null){SOURCE}"'
+   ```
+
+**Windows** (native PowerShell - if `uname` is not available):
+
+1. Get plugin path:
+   ```powershell
+   $cache = "$env:USERPROFILE\.claude\plugins\cache\claude-ultimate-hud\claude-ultimate-hud"
+   $manual = "$env:USERPROFILE\.claude\plugins\claude-ultimate-hud"
+   if (Test-Path $cache) { (Get-ChildItem $cache | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName } elseif (Test-Path $manual) { $manual }
+   ```
+
+2. Get runtime:
+   ```powershell
+   if (Get-Command bun -ErrorAction SilentlyContinue) { (Get-Command bun).Source } elseif (Get-Command node -ErrorAction SilentlyContinue) { (Get-Command node).Source }
+   ```
+
+3. Source file: `src\index.ts` for bun, `dist\index.js` otherwise.
+
+4. Generate PowerShell command:
+   ```
+   powershell -Command "& {$cache='$env:USERPROFILE\.claude\plugins\cache\claude-ultimate-hud\claude-ultimate-hud';$manual='$env:USERPROFILE\.claude\plugins\claude-ultimate-hud';$p=if(Test-Path $cache){(Get-ChildItem $cache|Sort-Object LastWriteTime -Descending|Select-Object -First 1).FullName}else{$manual}; & '{RUNTIME_PATH}' (Join-Path $p '{SOURCE}')}"
+   ```
+
+## Step 2: Create Configuration File
+
+Create `~/.claude/claude-ultimate-hud.local.json`:
 
 ```json
 {
-  "language": "$1 or auto",
-  "plan": "$2 or max",
+  "language": "{$1 or auto}",
+  "plan": "{$2 or max20}",
   "cache": {
     "ttlSeconds": 60
   }
 }
 ```
 
-### 2. Update settings.json
+## Step 3: Test Command
 
-Add or update the statusLine configuration in `~/.claude/settings.json`.
+Run the generated command to verify it works:
+- Should output HUD lines within a few seconds
+- If error or hang, debug before proceeding
 
-**IMPORTANT**: Check where the plugin is installed and use the correct path:
-- Marketplace install: `~/.claude/plugins/marketplaces/claude-ultimate-hud/`
-- Manual install: `~/.claude/plugins/claude-ultimate-hud/`
+## Step 4: Apply Configuration
 
-For marketplace installation:
+Read `~/.claude/settings.json` (or `$env:USERPROFILE\.claude\settings.json` on Windows).
+Merge the statusLine config, preserving existing settings:
+
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "bun ${HOME}/.claude/plugins/marketplaces/claude-ultimate-hud/dist/index.js"
+    "command": "{GENERATED_COMMAND}"
   }
 }
 ```
 
-For manual installation:
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "bun ${HOME}/.claude/plugins/claude-ultimate-hud/dist/index.js"
-  }
-}
+## Step 5: Verify
+
+The HUD should appear below the input field on the next message.
+
+**Example Output:**
+```
+🤖 Opus 4.5 │ ████░░░░░░ 25% │ 50K/200K │ $0.50 │ 5h: 12% (3h59m) │ 7d: 18% │ 7d-S: 1%
+📁 my-project git:(main) │ 2 CLAUDE.md │ 6 MCPs │ ⏱️ 1h30m
 ```
 
-### 3. Verify setup
+## Troubleshooting
 
-After configuration:
-1. Check that the configuration file was created successfully
-2. Verify the settings.json was updated
-3. Inform the user that the status line will appear on the next message
+**"command not found"**:
+- Runtime path changed (mise/nvm/asdf update)
+- Re-run setup to detect new path
 
-### 4. Show example output
+**Plugin not found**:
+- Install via: `/plugin marketplace add hadamyeedady12-dev/claude-ultimate-hud`
 
-Display what the status line will look like:
+**Windows "bash not recognized"**:
+- Use PowerShell command variant
 
-**Line 1 - Session:**
-```
-🤖 Opus │ ████████░░ 80% │ 160K/200K │ $1.25 │ 5h: 42% (2h30m) │ 7d: 69% │ 7d-S: 2%
-```
+**Permission denied**:
+- `chmod +x {RUNTIME_PATH}` on macOS/Linux
 
-**Line 2 - Project:**
-```
-📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
-```
+## Plan Differences
 
-**Line 3 - Tools (when active):**
-```
-◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
-```
-
-**Line 4 - Agents (when active):**
-```
-◐ explore: Finding patterns... │ ✓ librarian (2s)
-```
-
-**Line 5 - Todos (when active):**
-```
-▸ Implement auth flow (2/5)
-```
-
-## Notes
-
-- If no arguments provided, use defaults (auto language, max plan)
-- The status line will start working immediately after configuration
-- To change settings later, run this command again with new arguments
+| Feature | pro | max10 | max20 |
+|---------|-----|-------|-------|
+| 5h rate limit | ✅ | ✅ | ✅ |
+| 7d all models | ❌ | ✅ | ✅ |
+| 7d Sonnet | ❌ | ❌ | ✅ |

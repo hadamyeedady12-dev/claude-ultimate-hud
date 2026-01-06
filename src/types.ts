@@ -19,7 +19,7 @@ export interface StdinInput {
 
 export interface Config {
   language: 'en' | 'ko' | 'auto';
-  plan: 'pro' | 'max';
+  plan: 'pro' | 'max10' | 'max20' | 'max';
   cache: {
     ttlSeconds: number;
   };
@@ -27,7 +27,7 @@ export interface Config {
 
 export const DEFAULT_CONFIG: Config = {
   language: 'auto',
-  plan: 'max',
+  plan: 'max20',
   cache: {
     ttlSeconds: 60,
   },
