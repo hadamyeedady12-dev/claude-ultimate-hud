@@ -1,6 +1,7 @@
 import type { RenderContext, Translations } from '../types.js';
 import { COLORS, RESET, colorize, getColorForPercent, renderProgressBar } from '../utils/colors.js';
-import { formatTokens, formatCost, formatTimeRemaining, shortenModelName, calculatePercent } from '../utils/formatters.js';
+import { formatTokens, formatCost, formatTimeRemaining, shortenModelName } from '../utils/formatters.js';
+import { AUTOCOMPACT_BUFFER } from '../constants.js';
 
 const SEP = ` ${COLORS.dim}│${RESET} `;
 
@@ -16,9 +17,10 @@ export function renderSessionLine(ctx: RenderContext, t: Translations): string {
     return parts.join(SEP);
   }
 
-  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+  const baseTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
   const totalTokens = ctx.stdin.context_window.context_window_size;
-  const percent = calculatePercent(currentTokens, totalTokens);
+  const currentTokens = baseTokens + AUTOCOMPACT_BUFFER;
+  const percent = Math.min(100, Math.round((currentTokens / totalTokens) * 100));
 
   parts.push(renderProgressBar(percent));
 

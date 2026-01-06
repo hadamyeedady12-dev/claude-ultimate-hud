@@ -97,11 +97,6 @@ function formatSessionDuration(sessionStart, now = () => Date.now()) {
 function shortenModelName(name) {
   return name.replace(/^Claude\s*/i, "").trim();
 }
-function calculatePercent(current, total) {
-  if (total === 0)
-    return 0;
-  return Math.round(current / total * 100);
-}
 function truncate(text, maxLen) {
   if (text.length <= maxLen)
     return text;
@@ -481,6 +476,9 @@ function getTranslations(config) {
   return lang === "ko" ? KO : EN;
 }
 
+// src/constants.ts
+var AUTOCOMPACT_BUFFER = 45000;
+
 // src/render/session-line.ts
 var SEP = ` ${COLORS.dim}│${RESET} `;
 function renderSessionLine(ctx, t) {
@@ -492,9 +490,10 @@ function renderSessionLine(ctx, t) {
     parts.push(colorize(t.errors.no_context, COLORS.dim));
     return parts.join(SEP);
   }
-  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+  const baseTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
   const totalTokens = ctx.stdin.context_window.context_window_size;
-  const percent = calculatePercent(currentTokens, totalTokens);
+  const currentTokens = baseTokens + AUTOCOMPACT_BUFFER;
+  const percent = Math.min(100, Math.round(currentTokens / totalTokens * 100));
   parts.push(renderProgressBar(percent));
   const percentColor = getColorForPercent(percent);
   parts.push(colorize(`${percent}%`, percentColor));

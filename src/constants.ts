@@ -1,0 +1,1 @@
+export const AUTOCOMPACT_BUFFER = 45000;
