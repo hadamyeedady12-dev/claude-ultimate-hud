@@ -46,7 +46,7 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 /claude-ultimate-hud:setup
 ```
 
-> **Note**: Marketplace installs to `~/.claude/plugins/marketplaces/claude-ultimate-hud/`
+> **Note**: Marketplace installs to `~/.claude/plugins/cache/claude-ultimate-hud/`
 
 ### Manual Installation
 
@@ -106,6 +106,10 @@ Examples:
 This plugin combines features from:
 - [claude-dashboard](https://github.com/uppinote20/claude-dashboard) by uppinote
 - [claude-hud](https://github.com/jarrodwatts/claude-hud) by Jarrod Watts
+
+Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
+
+Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## License
 

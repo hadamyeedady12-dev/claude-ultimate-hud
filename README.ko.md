@@ -46,7 +46,7 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 /claude-ultimate-hud:setup
 ```
 
-> **참고**: 마켓플레이스 설치 경로는 `~/.claude/plugins/marketplaces/claude-ultimate-hud/`
+> **참고**: 마켓플레이스 설치 경로는 `~/.claude/plugins/cache/claude-ultimate-hud/`
 
 ### 수동 설치
 
@@ -106,6 +106,10 @@ bun install && bun run build
 이 플러그인은 다음 프로젝트의 기능을 결합했습니다:
 - [claude-dashboard](https://github.com/uppinote20/claude-dashboard) by uppinote
 - [claude-hud](https://github.com/jarrodwatts/claude-hud) by Jarrod Watts
+
+**별아해** 님의 소중한 피드백과 버그 수정에 감사드립니다.
+
+[OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
 ## 라이선스
 
