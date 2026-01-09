@@ -29,7 +29,7 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 ## Output Example
 
 ```
-🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ $0.04 │ 5h: 12% (3h59m) │ 7d: 18% │ 7d-S: 1%
+🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ $0.04 │ 5h: 12% (3h59m) │ 7d(all): 18% │ 7d(Sonnet): 1%
 📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: Finding patterns... │ ✓ librarian (2s)
