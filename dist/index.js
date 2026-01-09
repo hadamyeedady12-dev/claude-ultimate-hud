@@ -102,11 +102,11 @@ function truncate(text, maxLen) {
     return text;
   return text.slice(0, maxLen - 3) + "...";
 }
-function truncatePath(path, maxLen = 20) {
-  if (path.length <= maxLen)
-    return path;
-  const parts = path.split("/");
-  const filename = parts.pop() || path;
+function truncatePath(filePath, maxLen = 20) {
+  if (filePath.length <= maxLen)
+    return filePath;
+  const parts = filePath.split(/[/\\]/);
+  const filename = parts.pop() || filePath;
   if (filename.length >= maxLen)
     return filename.slice(0, maxLen - 3) + "...";
   return ".../" + filename;

@@ -54,10 +54,10 @@ export function truncate(text: string, maxLen: number): string {
   return text.slice(0, maxLen - 3) + '...';
 }
 
-export function truncatePath(path: string, maxLen = 20): string {
-  if (path.length <= maxLen) return path;
-  const parts = path.split('/');
-  const filename = parts.pop() || path;
+export function truncatePath(filePath: string, maxLen = 20): string {
+  if (filePath.length <= maxLen) return filePath;
+  const parts = filePath.split(/[/\\]/);
+  const filename = parts.pop() || filePath;
   if (filename.length >= maxLen) return filename.slice(0, maxLen - 3) + '...';
   return '.../' + filename;
 }
