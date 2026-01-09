@@ -57,8 +57,8 @@ function buildRateLimitsSection(ctx: RenderContext, t: Translations): string | n
   }
 
   const plan = ctx.config.plan;
-  const showSevenDay = plan === 'max10' || plan === 'max20' || plan === 'max';
-  const showSevenDaySonnet = plan === 'max20' || plan === 'max';
+  const showSevenDay = plan === 'max100' || plan === 'max200';
+  const showSevenDaySonnet = plan === 'max100' || plan === 'max200';
 
   if (showSevenDay && limits.seven_day) {
     const pct = Math.round(limits.seven_day.utilization);

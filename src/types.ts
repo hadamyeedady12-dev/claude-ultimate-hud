@@ -19,15 +19,15 @@ export interface StdinInput {
 
 export interface Config {
   language: 'en' | 'ko' | 'auto';
-  plan: 'pro' | 'max10' | 'max20' | 'max';
+  plan: 'pro' | 'max100' | 'max200';
   cache: {
     ttlSeconds: number;
   };
 }
 
 export const DEFAULT_CONFIG: Config = {
-  language: 'auto',
-  plan: 'max20',
+  language: 'ko',
+  plan: 'max200',
   cache: {
     ttlSeconds: 60,
   },

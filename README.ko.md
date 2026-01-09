@@ -70,13 +70,13 @@ bun install && bun run build
 | 인자 | 옵션 | 기본값 |
 |------|------|--------|
 | 언어 | `auto`, `en`, `ko` | `auto` |
-| 플랜 | `pro`, `max10`, `max20` | `max20` |
+| 플랜 | `pro`, `max100`, `max200` | `max200` |
 
 예시:
 ```
-/claude-ultimate-hud:setup ko max20   # 한국어, Max 20 플랜
-/claude-ultimate-hud:setup en pro     # 영어, Pro 플랜
-/claude-ultimate-hud:setup auto max10 # 자동 언어, Max 10 플랜
+/claude-ultimate-hud:setup ko max100   # 한국어, Max $100 플랜
+/claude-ultimate-hud:setup en pro      # 영어, Pro 플랜
+/claude-ultimate-hud:setup auto max200 # 자동 언어, Max $200 플랜
 ```
 
 ## 요구사항
@@ -94,12 +94,19 @@ bun install && bun run build
 
 ## 플랜별 차이
 
-| 기능 | pro | max10 | max20 |
-|------|-----|-------|-------|
+| 기능 | pro | max100 | max200 |
+|------|-----|--------|--------|
 | 5시간 rate limit | ✅ | ✅ | ✅ |
 | 리셋 카운트다운 | ✅ | ✅ | ✅ |
 | 7일 전체 모델 | ❌ | ✅ | ✅ |
-| 7일 Sonnet 전용 | ❌ | ❌ | ✅ |
+| 7일 Sonnet 전용 | ❌ | ✅ | ✅ |
+
+### Rate Limits 상세
+
+| 플랜 | 5시간 | 주간 Sonnet | 주간 Opus |
+|------|-------|-------------|-----------|
+| Max $100 (5x) | ~225 메시지 | 140-280시간 | 15-35시간 |
+| Max $200 (20x) | ~900 메시지 | 240-480시간 | 24-40시간 |
 
 ## 크레딧
 

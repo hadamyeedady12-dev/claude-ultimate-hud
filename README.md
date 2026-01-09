@@ -70,13 +70,13 @@ Then run:
 | Argument | Options | Default |
 |----------|---------|---------|
 | language | `auto`, `en`, `ko` | `auto` |
-| plan | `pro`, `max10`, `max20` | `max20` |
+| plan | `pro`, `max100`, `max200` | `max200` |
 
 Examples:
 ```
-/claude-ultimate-hud:setup ko max20   # Korean, Max 20 plan
-/claude-ultimate-hud:setup en pro     # English, Pro plan
-/claude-ultimate-hud:setup auto max10 # Auto language, Max 10 plan
+/claude-ultimate-hud:setup ko max100   # Korean, Max $100 plan
+/claude-ultimate-hud:setup en pro      # English, Pro plan
+/claude-ultimate-hud:setup auto max200 # Auto language, Max $200 plan
 ```
 
 ## Requirements
@@ -94,12 +94,19 @@ Examples:
 
 ## Plan Differences
 
-| Feature | pro | max10 | max20 |
-|---------|-----|-------|-------|
+| Feature | pro | max100 | max200 |
+|---------|-----|--------|--------|
 | 5h rate limit | ✅ | ✅ | ✅ |
 | Reset countdown | ✅ | ✅ | ✅ |
 | 7d all models | ❌ | ✅ | ✅ |
-| 7d Sonnet only | ❌ | ❌ | ✅ |
+| 7d Sonnet only | ❌ | ✅ | ✅ |
+
+### Rate Limits Detail
+
+| Plan | 5-hour | Weekly Sonnet | Weekly Opus |
+|------|--------|---------------|-------------|
+| Max $100 (5x) | ~225 messages | 140-280 hours | 15-35 hours |
+| Max $200 (20x) | ~900 messages | 240-480 hours | 24-40 hours |
 
 ## Credits
 

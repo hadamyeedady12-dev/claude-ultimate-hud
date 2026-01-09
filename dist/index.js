@@ -7,8 +7,8 @@ import { homedir as homedir3 } from "os";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
-  language: "auto",
-  plan: "max20",
+  language: "ko",
+  plan: "max200",
   cache: {
     ttlSeconds: 60
   }
@@ -275,6 +275,13 @@ function countRulesInDir(rulesDir) {
   } catch {}
   return count;
 }
+function resolvePath(p) {
+  try {
+    return fs2.realpathSync(p);
+  } catch {
+    return path.resolve(p);
+  }
+}
 async function countConfigs(cwd) {
   let claudeMdCount = 0;
   let rulesCount = 0;
@@ -282,31 +289,61 @@ async function countConfigs(cwd) {
   let hooksCount = 0;
   const homeDir = os.homedir();
   const claudeDir = path.join(homeDir, ".claude");
-  if (fs2.existsSync(path.join(claudeDir, "CLAUDE.md")))
+  const countedPaths = new Set;
+  const userClaudeMd = path.join(claudeDir, "CLAUDE.md");
+  if (fs2.existsSync(userClaudeMd)) {
     claudeMdCount++;
-  rulesCount += countRulesInDir(path.join(claudeDir, "rules"));
+    countedPaths.add(resolvePath(userClaudeMd));
+  }
+  const userRulesDir = path.join(claudeDir, "rules");
+  rulesCount += countRulesInDir(userRulesDir);
+  if (fs2.existsSync(userRulesDir)) {
+    countedPaths.add(resolvePath(userRulesDir));
+  }
   const userSettings = path.join(claudeDir, "settings.json");
   mcpCount += countMcpServersInFile(userSettings);
   hooksCount += countHooksInFile(userSettings);
+  if (fs2.existsSync(userSettings)) {
+    countedPaths.add(resolvePath(userSettings));
+  }
   const userClaudeJson = path.join(homeDir, ".claude.json");
   mcpCount += countMcpServersInFile(userClaudeJson, userSettings);
   if (cwd) {
-    if (fs2.existsSync(path.join(cwd, "CLAUDE.md")))
+    const countFileIfNew = (filePath) => {
+      if (!fs2.existsSync(filePath))
+        return false;
+      const resolved = resolvePath(filePath);
+      if (countedPaths.has(resolved))
+        return false;
+      countedPaths.add(resolved);
+      return true;
+    };
+    if (countFileIfNew(path.join(cwd, "CLAUDE.md")))
       claudeMdCount++;
-    if (fs2.existsSync(path.join(cwd, "CLAUDE.local.md")))
+    if (countFileIfNew(path.join(cwd, "CLAUDE.local.md")))
       claudeMdCount++;
-    if (fs2.existsSync(path.join(cwd, ".claude", "CLAUDE.md")))
+    if (countFileIfNew(path.join(cwd, ".claude", "CLAUDE.md")))
       claudeMdCount++;
-    if (fs2.existsSync(path.join(cwd, ".claude", "CLAUDE.local.md")))
+    if (countFileIfNew(path.join(cwd, ".claude", "CLAUDE.local.md")))
       claudeMdCount++;
-    rulesCount += countRulesInDir(path.join(cwd, ".claude", "rules"));
-    mcpCount += countMcpServersInFile(path.join(cwd, ".mcp.json"));
+    const projectRulesDir = path.join(cwd, ".claude", "rules");
+    if (countFileIfNew(projectRulesDir)) {
+      rulesCount += countRulesInDir(projectRulesDir);
+    }
+    const projectMcpJson = path.join(cwd, ".mcp.json");
+    if (countFileIfNew(projectMcpJson)) {
+      mcpCount += countMcpServersInFile(projectMcpJson);
+    }
     const projectSettings = path.join(cwd, ".claude", "settings.json");
-    mcpCount += countMcpServersInFile(projectSettings);
-    hooksCount += countHooksInFile(projectSettings);
+    if (countFileIfNew(projectSettings)) {
+      mcpCount += countMcpServersInFile(projectSettings);
+      hooksCount += countHooksInFile(projectSettings);
+    }
     const localSettings = path.join(cwd, ".claude", "settings.local.json");
-    mcpCount += countMcpServersInFile(localSettings);
-    hooksCount += countHooksInFile(localSettings);
+    if (countFileIfNew(localSettings)) {
+      mcpCount += countMcpServersInFile(localSettings);
+      hooksCount += countHooksInFile(localSettings);
+    }
   }
   return { claudeMdCount, rulesCount, mcpCount, hooksCount };
 }
@@ -521,8 +558,8 @@ function buildRateLimitsSection(ctx, t) {
     parts.push(text);
   }
   const plan = ctx.config.plan;
-  const showSevenDay = plan === "max10" || plan === "max20" || plan === "max";
-  const showSevenDaySonnet = plan === "max20" || plan === "max";
+  const showSevenDay = plan === "max100" || plan === "max200";
+  const showSevenDaySonnet = plan === "max100" || plan === "max200";
   if (showSevenDay && limits.seven_day) {
     const pct = Math.round(limits.seven_day.utilization);
     const color = getColorForPercent(pct);

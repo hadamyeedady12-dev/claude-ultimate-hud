@@ -17,8 +17,8 @@ Configure the claude-ultimate-hud status line plugin with automatic runtime and 
 
 - `$2`: Subscription plan
   - `pro`: Shows 5h rate limit only
-  - `max10`: Shows 5h + 7d all models (Max 10 plan)
-  - `max20` (default): Shows 5h + 7d all + 7d Sonnet (Max 20 plan)
+  - `max100`: Shows 5h + 7d all + 7d Sonnet (Max $100/월 플랜)
+  - `max200` (default): Shows 5h + 7d all + 7d Sonnet (Max $200/월 플랜)
 
 ## Step 1: Detect Platform & Runtime
 
@@ -73,7 +73,7 @@ Create `~/.claude/claude-ultimate-hud.local.json`:
 ```json
 {
   "language": "{$1 or auto}",
-  "plan": "{$2 or max20}",
+  "plan": "{$2 or max200}",
   "cache": {
     "ttlSeconds": 60
   }
@@ -127,8 +127,15 @@ The HUD should appear below the input field on the next message.
 
 ## Plan Differences
 
-| Feature | pro | max10 | max20 |
-|---------|-----|-------|-------|
+| Feature | pro | max100 | max200 |
+|---------|-----|--------|--------|
 | 5h rate limit | ✅ | ✅ | ✅ |
 | 7d all models | ❌ | ✅ | ✅ |
-| 7d Sonnet | ❌ | ❌ | ✅ |
+| 7d Sonnet | ❌ | ✅ | ✅ |
+
+### Rate Limits by Plan
+
+| Plan | 5시간 | 주간 Sonnet | 주간 Opus |
+|------|-------|-------------|-----------|
+| Max $100 (5x) | ~225 메시지 | 140-280시간 | 15-35시간 |
+| Max $200 (20x) | ~900 메시지 | 240-480시간 | 24-40시간 |
