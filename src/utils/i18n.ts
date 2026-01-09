@@ -4,7 +4,7 @@ const EN: Translations = {
   labels: {
     '5h': '5h',
     '7d_all': '7d',
-    '7d_sonnet': '7d-S',
+    '7d_sonnet': '7d(Sonnet)',
   },
   time: {
     hours: ' hours',
@@ -21,7 +21,7 @@ const KO: Translations = {
   labels: {
     '5h': '5시간',
     '7d_all': '7일',
-    '7d_sonnet': '7일-S',
+    '7d_sonnet': '7일(소넷만)',
   },
   time: {
     hours: '시간',
