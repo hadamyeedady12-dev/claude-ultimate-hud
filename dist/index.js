@@ -473,7 +473,7 @@ async function getGitBranch(cwd) {
 var EN = {
   labels: {
     "5h": "5h",
-    "7d_all": "7d",
+    "7d_all": "7d(all)",
     "7d_sonnet": "7d(Sonnet)"
   },
   time: {
@@ -489,8 +489,8 @@ var EN = {
 var KO = {
   labels: {
     "5h": "5시간",
-    "7d_all": "7일",
-    "7d_sonnet": "7일(소넷만)"
+    "7d_all": "7일(all)",
+    "7d_sonnet": "7일(소넷)"
   },
   time: {
     hours: "시간",
