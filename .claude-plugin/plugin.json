@@ -1,6 +1,6 @@
 {
   "name": "claude-ultimate-hud",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Ultimate status line combining rate limits, cost tracking, project info, tool activity, and todo progress",
   "author": {
     "name": "hadamyeedady12-dev"
