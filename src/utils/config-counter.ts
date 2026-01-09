@@ -53,6 +53,14 @@ function countRulesInDir(rulesDir: string): number {
   return count;
 }
 
+function resolvePath(p: string): string {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return path.resolve(p);
+  }
+}
+
 export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
   let claudeMdCount = 0;
   let rulesCount = 0;
@@ -62,33 +70,67 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
   const homeDir = os.homedir();
   const claudeDir = path.join(homeDir, '.claude');
 
-  if (fs.existsSync(path.join(claudeDir, 'CLAUDE.md'))) claudeMdCount++;
-  rulesCount += countRulesInDir(path.join(claudeDir, 'rules'));
+  // Track already counted paths to prevent duplicates
+  const countedPaths = new Set<string>();
+
+  const userClaudeMd = path.join(claudeDir, 'CLAUDE.md');
+  if (fs.existsSync(userClaudeMd)) {
+    claudeMdCount++;
+    countedPaths.add(resolvePath(userClaudeMd));
+  }
+
+  const userRulesDir = path.join(claudeDir, 'rules');
+  rulesCount += countRulesInDir(userRulesDir);
+  if (fs.existsSync(userRulesDir)) {
+    countedPaths.add(resolvePath(userRulesDir));
+  }
 
   const userSettings = path.join(claudeDir, 'settings.json');
   mcpCount += countMcpServersInFile(userSettings);
   hooksCount += countHooksInFile(userSettings);
+  if (fs.existsSync(userSettings)) {
+    countedPaths.add(resolvePath(userSettings));
+  }
 
   const userClaudeJson = path.join(homeDir, '.claude.json');
   mcpCount += countMcpServersInFile(userClaudeJson, userSettings);
 
   if (cwd) {
-    if (fs.existsSync(path.join(cwd, 'CLAUDE.md'))) claudeMdCount++;
-    if (fs.existsSync(path.join(cwd, 'CLAUDE.local.md'))) claudeMdCount++;
-    if (fs.existsSync(path.join(cwd, '.claude', 'CLAUDE.md'))) claudeMdCount++;
-    if (fs.existsSync(path.join(cwd, '.claude', 'CLAUDE.local.md'))) claudeMdCount++;
+    // Helper to check and count file if not already counted
+    const countFileIfNew = (filePath: string): boolean => {
+      if (!fs.existsSync(filePath)) return false;
+      const resolved = resolvePath(filePath);
+      if (countedPaths.has(resolved)) return false;
+      countedPaths.add(resolved);
+      return true;
+    };
 
-    rulesCount += countRulesInDir(path.join(cwd, '.claude', 'rules'));
+    if (countFileIfNew(path.join(cwd, 'CLAUDE.md'))) claudeMdCount++;
+    if (countFileIfNew(path.join(cwd, 'CLAUDE.local.md'))) claudeMdCount++;
+    if (countFileIfNew(path.join(cwd, '.claude', 'CLAUDE.md'))) claudeMdCount++;
+    if (countFileIfNew(path.join(cwd, '.claude', 'CLAUDE.local.md'))) claudeMdCount++;
 
-    mcpCount += countMcpServersInFile(path.join(cwd, '.mcp.json'));
+    const projectRulesDir = path.join(cwd, '.claude', 'rules');
+    if (countFileIfNew(projectRulesDir)) {
+      rulesCount += countRulesInDir(projectRulesDir);
+    }
+
+    const projectMcpJson = path.join(cwd, '.mcp.json');
+    if (countFileIfNew(projectMcpJson)) {
+      mcpCount += countMcpServersInFile(projectMcpJson);
+    }
 
     const projectSettings = path.join(cwd, '.claude', 'settings.json');
-    mcpCount += countMcpServersInFile(projectSettings);
-    hooksCount += countHooksInFile(projectSettings);
+    if (countFileIfNew(projectSettings)) {
+      mcpCount += countMcpServersInFile(projectSettings);
+      hooksCount += countHooksInFile(projectSettings);
+    }
 
     const localSettings = path.join(cwd, '.claude', 'settings.local.json');
-    mcpCount += countMcpServersInFile(localSettings);
-    hooksCount += countHooksInFile(localSettings);
+    if (countFileIfNew(localSettings)) {
+      mcpCount += countMcpServersInFile(localSettings);
+      hooksCount += countHooksInFile(localSettings);
+    }
   }
 
   return { claudeMdCount, rulesCount, mcpCount, hooksCount };
