@@ -1,9 +1,11 @@
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import type { UsageLimits } from '../types.js';
 import { getCredentials } from './credentials.js';
 
 const API_TIMEOUT_MS = 5000;
-const CACHE_FILE = '/tmp/claude-ultimate-hud-cache.json';
+const CACHE_FILE = path.join(os.tmpdir(), 'claude-ultimate-hud-cache.json');
 
 interface CacheEntry {
   data: UsageLimits;

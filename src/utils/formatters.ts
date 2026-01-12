@@ -1,3 +1,4 @@
+import path from 'path';
 import type { Translations } from '../types.js';
 
 export function formatTokens(n: number): string {
@@ -59,5 +60,5 @@ export function truncatePath(filePath: string, maxLen = 20): string {
   const parts = filePath.split(/[/\\]/);
   const filename = parts.pop() || filePath;
   if (filename.length >= maxLen) return filename.slice(0, maxLen - 3) + '...';
-  return '.../' + filename;
+  return '...' + path.sep + filename;
 }

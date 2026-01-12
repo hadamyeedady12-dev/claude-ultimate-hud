@@ -58,6 +58,7 @@ function renderProgressBar(percent, width = 10) {
 }
 
 // src/utils/formatters.ts
+import path from "path";
 function formatTokens(n) {
   if (n >= 1e6)
     return `${(n / 1e6).toFixed(1)}M`;
@@ -109,11 +110,13 @@ function truncatePath(filePath, maxLen = 20) {
   const filename = parts.pop() || filePath;
   if (filename.length >= maxLen)
     return filename.slice(0, maxLen - 3) + "...";
-  return ".../" + filename;
+  return "..." + path.sep + filename;
 }
 
 // src/utils/api-client.ts
 import fs from "fs";
+import os from "os";
+import path2 from "path";
 
 // src/utils/credentials.ts
 import { execFileSync } from "child_process";
@@ -152,7 +155,7 @@ async function getCredentialsFromFile() {
 
 // src/utils/api-client.ts
 var API_TIMEOUT_MS = 5000;
-var CACHE_FILE = "/tmp/claude-ultimate-hud-cache.json";
+var CACHE_FILE = path2.join(os.tmpdir(), "claude-ultimate-hud-cache.json");
 var usageCache = null;
 function isCacheValid(ttlSeconds) {
   if (!usageCache)
@@ -223,8 +226,8 @@ function saveFileCache(data) {
 
 // src/utils/config-counter.ts
 import * as fs2 from "fs";
-import * as path from "path";
-import * as os from "os";
+import * as path3 from "path";
+import * as os2 from "os";
 function getMcpServerNames(filePath) {
   if (!fs2.existsSync(filePath))
     return new Set;
@@ -265,7 +268,7 @@ function countRulesInDir(rulesDir) {
   try {
     const entries = fs2.readdirSync(rulesDir, { withFileTypes: true });
     for (const entry of entries) {
-      const fullPath = path.join(rulesDir, entry.name);
+      const fullPath = path3.join(rulesDir, entry.name);
       if (entry.isDirectory()) {
         count += countRulesInDir(fullPath);
       } else if (entry.isFile() && entry.name.endsWith(".md")) {
@@ -279,7 +282,7 @@ function resolvePath(p) {
   try {
     return fs2.realpathSync(p);
   } catch {
-    return path.resolve(p);
+    return path3.resolve(p);
   }
 }
 async function countConfigs(cwd) {
@@ -287,26 +290,26 @@ async function countConfigs(cwd) {
   let rulesCount = 0;
   let mcpCount = 0;
   let hooksCount = 0;
-  const homeDir = os.homedir();
-  const claudeDir = path.join(homeDir, ".claude");
+  const homeDir = os2.homedir();
+  const claudeDir = path3.join(homeDir, ".claude");
   const countedPaths = new Set;
-  const userClaudeMd = path.join(claudeDir, "CLAUDE.md");
+  const userClaudeMd = path3.join(claudeDir, "CLAUDE.md");
   if (fs2.existsSync(userClaudeMd)) {
     claudeMdCount++;
     countedPaths.add(resolvePath(userClaudeMd));
   }
-  const userRulesDir = path.join(claudeDir, "rules");
+  const userRulesDir = path3.join(claudeDir, "rules");
   rulesCount += countRulesInDir(userRulesDir);
   if (fs2.existsSync(userRulesDir)) {
     countedPaths.add(resolvePath(userRulesDir));
   }
-  const userSettings = path.join(claudeDir, "settings.json");
+  const userSettings = path3.join(claudeDir, "settings.json");
   mcpCount += countMcpServersInFile(userSettings);
   hooksCount += countHooksInFile(userSettings);
   if (fs2.existsSync(userSettings)) {
     countedPaths.add(resolvePath(userSettings));
   }
-  const userClaudeJson = path.join(homeDir, ".claude.json");
+  const userClaudeJson = path3.join(homeDir, ".claude.json");
   mcpCount += countMcpServersInFile(userClaudeJson, userSettings);
   if (cwd) {
     const countFileIfNew = (filePath) => {
@@ -318,28 +321,28 @@ async function countConfigs(cwd) {
       countedPaths.add(resolved);
       return true;
     };
-    if (countFileIfNew(path.join(cwd, "CLAUDE.md")))
+    if (countFileIfNew(path3.join(cwd, "CLAUDE.md")))
       claudeMdCount++;
-    if (countFileIfNew(path.join(cwd, "CLAUDE.local.md")))
+    if (countFileIfNew(path3.join(cwd, "CLAUDE.local.md")))
       claudeMdCount++;
-    if (countFileIfNew(path.join(cwd, ".claude", "CLAUDE.md")))
+    if (countFileIfNew(path3.join(cwd, ".claude", "CLAUDE.md")))
       claudeMdCount++;
-    if (countFileIfNew(path.join(cwd, ".claude", "CLAUDE.local.md")))
+    if (countFileIfNew(path3.join(cwd, ".claude", "CLAUDE.local.md")))
       claudeMdCount++;
-    const projectRulesDir = path.join(cwd, ".claude", "rules");
+    const projectRulesDir = path3.join(cwd, ".claude", "rules");
     if (countFileIfNew(projectRulesDir)) {
       rulesCount += countRulesInDir(projectRulesDir);
     }
-    const projectMcpJson = path.join(cwd, ".mcp.json");
+    const projectMcpJson = path3.join(cwd, ".mcp.json");
     if (countFileIfNew(projectMcpJson)) {
       mcpCount += countMcpServersInFile(projectMcpJson);
     }
-    const projectSettings = path.join(cwd, ".claude", "settings.json");
+    const projectSettings = path3.join(cwd, ".claude", "settings.json");
     if (countFileIfNew(projectSettings)) {
       mcpCount += countMcpServersInFile(projectSettings);
       hooksCount += countHooksInFile(projectSettings);
     }
-    const localSettings = path.join(cwd, ".claude", "settings.local.json");
+    const localSettings = path3.join(cwd, ".claude", "settings.local.json");
     if (countFileIfNew(localSettings)) {
       mcpCount += countMcpServersInFile(localSettings);
       hooksCount += countHooksInFile(localSettings);
@@ -574,12 +577,12 @@ function buildRateLimitsSection(ctx, t) {
 }
 
 // src/render/project-line.ts
-import path2 from "node:path";
+import path4 from "node:path";
 var SEP2 = ` ${COLORS.dim}│${RESET} `;
 function renderProjectLine(ctx) {
   const parts = [];
   if (ctx.stdin.cwd) {
-    const projectName = path2.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
+    const projectName = path4.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
     let projectPart = `\uD83D\uDCC1 ${yellow(projectName)}`;
     if (ctx.gitBranch) {
       projectPart += ` ${magenta("git:(")}${cyan(ctx.gitBranch)}${magenta(")")}`;
