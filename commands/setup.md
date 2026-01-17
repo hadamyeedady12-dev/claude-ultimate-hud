@@ -8,19 +8,11 @@ allowed-tools: Bash, Read, Edit, Write, AskUserQuestion
 
 Configure the claude-ultimate-hud status line plugin with automatic runtime and platform detection.
 
-## Step 0: Ask User Preferences (if no arguments provided)
+## Step 0: Ask User Plan Preference (if $2 not provided)
 
-If `$1` (language) or `$2` (plan) is not provided, use `AskUserQuestion` to ask:
+If `$2` (plan) is not provided, use `AskUserQuestion` to ask:
 
-**Question 1 - Language:**
-- header: "언어"
-- question: "어떤 언어로 표시할까요?"
-- options:
-  - `auto`: 시스템 언어 자동 감지 (Recommended)
-  - `ko`: 한국어
-  - `en`: English
-
-**Question 2 - Plan:**
+**Question - Plan:**
 - header: "플랜"
 - question: "어떤 플랜을 사용하시나요?"
 - options:
@@ -28,7 +20,9 @@ If `$1` (language) or `$2` (plan) is not provided, use `AskUserQuestion` to ask:
   - `max100`: Max $100/월 (5x) - 5h + 7d 전체 + 7d 소넷
   - `pro`: Pro - 5h만 표시
 
-Use the selected values for the rest of the setup.
+Language is always set to `auto` (system language auto-detection).
+
+Use the selected plan value for the rest of the setup.
 
 ## Arguments (optional, skips interactive selection)
 
