@@ -2,6 +2,7 @@
 description: Configure claude-ultimate-hud as your statusline
 argument-hint: "[language] [plan]"
 allowed-tools: Bash, Read, Edit, Write, AskUserQuestion
+user-invocable: false
 ---
 
 # Claude Ultimate HUD Setup

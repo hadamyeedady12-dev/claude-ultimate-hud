@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Ultimate status line combining rate limits, project info, tool activity, and todo progress",
-    "version": "1.1.2"
+    "version": "1.1.3"
   },
   "plugins": [
     {
