@@ -1,14 +1,36 @@
 ---
 description: Configure claude-ultimate-hud as your statusline
 argument-hint: "[language] [plan]"
-allowed-tools: Bash, Read, Edit, Write
+allowed-tools: Bash, Read, Edit, Write, AskUserQuestion
 ---
 
 # Claude Ultimate HUD Setup
 
 Configure the claude-ultimate-hud status line plugin with automatic runtime and platform detection.
 
-## Arguments
+## Step 0: Ask User Preferences (if no arguments provided)
+
+If `$1` (language) or `$2` (plan) is not provided, use `AskUserQuestion` to ask:
+
+**Question 1 - Language:**
+- header: "언어"
+- question: "어떤 언어로 표시할까요?"
+- options:
+  - `auto`: 시스템 언어 자동 감지 (Recommended)
+  - `ko`: 한국어
+  - `en`: English
+
+**Question 2 - Plan:**
+- header: "플랜"
+- question: "어떤 플랜을 사용하시나요?"
+- options:
+  - `max200`: Max $200/월 (20x) - 5h + 7d 전체 + 7d 소넷 (Recommended)
+  - `max100`: Max $100/월 (5x) - 5h + 7d 전체 + 7d 소넷
+  - `pro`: Pro - 5h만 표시
+
+Use the selected values for the rest of the setup.
+
+## Arguments (optional, skips interactive selection)
 
 - `$1`: Language preference
   - `auto` (default): Detect from system language
@@ -106,7 +128,7 @@ The HUD should appear below the input field on the next message.
 
 **Example Output:**
 ```
-🤖 Opus 4.5 │ ████░░░░░░ 25% │ 50K/200K │ $0.50 │ 5h: 12% (3h59m) │ 7d: 18% │ 7d-S: 1%
+🤖 Opus 4.5 │ ████░░░░░░ 25% │ 50K/200K │ 5h: 12% (3h59m) │ 7d: 전체 18% │ 소넷 1%
 📁 my-project git:(main) │ 2 CLAUDE.md │ 6 MCPs │ ⏱️ 1h30m
 ```
 
