@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as readline from 'readline';
+import * as fs from 'node:fs';
+import * as readline from 'node:readline';
 import type { TranscriptData, ToolEntry, AgentEntry, TodoEntry } from '../types.js';
 
 interface TranscriptLine {

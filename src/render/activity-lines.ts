@@ -1,8 +1,6 @@
 import type { RenderContext, ToolEntry, AgentEntry } from '../types.js';
-import { COLORS, RESET, dim, cyan, yellow, green, magenta } from '../utils/colors.js';
+import { dim, cyan, yellow, green, magenta } from '../utils/colors.js';
 import { truncate, truncatePath } from '../utils/formatters.js';
-
-const SEP = ` ${COLORS.dim}│${RESET} `;
 
 export function renderToolsLine(ctx: RenderContext): string | null {
   const { tools } = ctx.transcript;

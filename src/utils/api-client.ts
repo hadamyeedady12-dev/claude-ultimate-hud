@@ -1,6 +1,6 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import type { UsageLimits } from '../types.js';
 import { getCredentials } from './credentials.js';
 
@@ -57,9 +57,9 @@ export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | n
     const data = await response.json();
 
     const limits: UsageLimits = {
-      five_hour: data.five_hour ?? null,
-      seven_day: data.seven_day ?? null,
-      seven_day_sonnet: data.seven_day_sonnet ?? null,
+      five_hour: data.five_hour,
+      seven_day: data.seven_day,
+      seven_day_sonnet: data.seven_day_sonnet,
     };
 
     usageCache = { data: limits, timestamp: Date.now() };

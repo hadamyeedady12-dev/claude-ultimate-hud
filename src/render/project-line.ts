@@ -17,22 +17,18 @@ export function renderProjectLine(ctx: RenderContext): string {
     parts.push(projectPart);
   }
 
-  const { configCounts } = ctx;
+  const { claudeMdCount, rulesCount, mcpCount, hooksCount } = ctx.configCounts;
+  const configItems: [number, string][] = [
+    [claudeMdCount, 'CLAUDE.md'],
+    [rulesCount, 'rules'],
+    [mcpCount, 'MCPs'],
+    [hooksCount, 'hooks'],
+  ];
 
-  if (configCounts.claudeMdCount > 0) {
-    parts.push(dim(`${configCounts.claudeMdCount} CLAUDE.md`));
-  }
-
-  if (configCounts.rulesCount > 0) {
-    parts.push(dim(`${configCounts.rulesCount} rules`));
-  }
-
-  if (configCounts.mcpCount > 0) {
-    parts.push(dim(`${configCounts.mcpCount} MCPs`));
-  }
-
-  if (configCounts.hooksCount > 0) {
-    parts.push(dim(`${configCounts.hooksCount} hooks`));
+  for (const [count, label] of configItems) {
+    if (count > 0) {
+      parts.push(dim(`${count} ${label}`));
+    }
   }
 
   if (ctx.sessionDuration) {

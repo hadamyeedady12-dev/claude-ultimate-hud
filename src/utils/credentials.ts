@@ -1,7 +1,7 @@
-import { execFileSync } from 'child_process';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
-import { homedir } from 'os';
+import { execFileSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 
 export async function getCredentials(): Promise<string | null> {
   try {

@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import type { Translations } from '../types.js';
 
 export function formatTokens(n: number): string {
@@ -43,11 +43,6 @@ export function formatSessionDuration(sessionStart?: Date, now: () => number = (
 
 export function shortenModelName(name: string): string {
   return name.replace(/^Claude\s*/i, '').trim();
-}
-
-export function calculatePercent(current: number, total: number): number {
-  if (total === 0) return 0;
-  return Math.round((current / total) * 100);
 }
 
 export function truncate(text: string, maxLen: number): string {

@@ -1,17 +1,22 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
 import type { ConfigCounts } from '../types.js';
 
-function getMcpServerNames(filePath: string): Set<string> {
-  if (!fs.existsSync(filePath)) return new Set();
+function readJsonFile(filePath: string): Record<string, unknown> | null {
+  if (!fs.existsSync(filePath)) return null;
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const config = JSON.parse(content);
-    if (config.mcpServers && typeof config.mcpServers === 'object') {
-      return new Set(Object.keys(config.mcpServers));
-    }
-  } catch {}
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function getMcpServerNames(filePath: string): Set<string> {
+  const config = readJsonFile(filePath);
+  if (config?.mcpServers && typeof config.mcpServers === 'object') {
+    return new Set(Object.keys(config.mcpServers));
+  }
   return new Set();
 }
 
@@ -25,14 +30,10 @@ function countMcpServersInFile(filePath: string, excludeFrom?: string): number {
 }
 
 function countHooksInFile(filePath: string): number {
-  if (!fs.existsSync(filePath)) return 0;
-  try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const config = JSON.parse(content);
-    if (config.hooks && typeof config.hooks === 'object') {
-      return Object.keys(config.hooks).length;
-    }
-  } catch {}
+  const config = readJsonFile(filePath);
+  if (config?.hooks && typeof config.hooks === 'object') {
+    return Object.keys(config.hooks).length;
+  }
   return 0;
 }
 

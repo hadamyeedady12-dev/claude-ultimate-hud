@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { readFile } from 'fs/promises';
-import { join } from 'path';
-import { homedir } from 'os';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 
 import type { StdinInput, Config, RenderContext } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';

@@ -56,17 +56,15 @@ function buildRateLimitsSection(ctx: RenderContext, t: Translations): string | n
     parts.push(text);
   }
 
-  const plan = ctx.config.plan;
-  const showSevenDay = plan === 'max100' || plan === 'max200';
-  const showSevenDaySonnet = plan === 'max100' || plan === 'max200';
+  const isMaxPlan = ctx.config.plan === 'max100' || ctx.config.plan === 'max200';
 
-  if (showSevenDay && limits.seven_day) {
+  if (isMaxPlan && limits.seven_day) {
     const pct = Math.round(limits.seven_day.utilization);
     const color = getColorForPercent(pct);
     parts.push(`${t.labels['7d_all']}: ${colorize(`${pct}%`, color)}`);
   }
 
-  if (showSevenDaySonnet && limits.seven_day_sonnet) {
+  if (isMaxPlan && limits.seven_day_sonnet) {
     const pct = Math.round(limits.seven_day_sonnet.utilization);
     const color = getColorForPercent(pct);
     parts.push(`${t.labels['7d_sonnet']}: ${colorize(`${pct}%`, color)}`);
