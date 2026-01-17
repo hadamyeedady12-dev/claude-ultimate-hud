@@ -63,20 +63,18 @@ bun install && bun run build
 ## 설정
 
 ```
-/claude-ultimate-hud:setup [언어] [플랜]
+/claude-ultimate-hud:setup
 ```
 
-| 인자 | 옵션 | 기본값 |
-|------|------|--------|
-| 언어 | `auto`, `en`, `ko` | `auto` |
-| 플랜 | `pro`, `max100`, `max200` | `max200` |
+실행하면 플랜을 선택하는 인터랙티브 메뉴가 표시됩니다:
 
-예시:
-```
-/claude-ultimate-hud:setup ko max100   # 한국어, Max $100 플랜
-/claude-ultimate-hud:setup en pro      # 영어, Pro 플랜
-/claude-ultimate-hud:setup auto max200 # 자동 언어, Max $200 플랜
-```
+| 플랜 | 설명 |
+|------|------|
+| `max200` | Max $200/월 (20x) - 5시간 + 7일 전체 + 7일 소넷 **(권장)** |
+| `max100` | Max $100/월 (5x) - 5시간 + 7일 전체 + 7일 소넷 |
+| `pro` | Pro - 5시간만 표시 |
+
+언어는 시스템 언어를 자동 감지합니다. 수동으로 변경하려면 `~/.claude/claude-ultimate-hud.local.json` 파일의 `language` 값을 `en` 또는 `ko`로 수정하세요.
 
 ## 요구사항
 
@@ -124,6 +122,7 @@ bun install && bun run build
 - 🎨 **UI 개선**: 7일 제한 통합 표시 (`7일: 전체 3% │ 소넷 0%`)
 - 🧹 **코드 정리**: 중복 제거, 미사용 함수 삭제
 - ❌ **비용 표시 제거**: 상태줄에서 비용($) 표시 삭제
+- ⚙️ **설정 개선**: 인터랙티브 플랜 선택, 언어 자동 감지
 
 ### v1.0.2
 - 초기 릴리즈

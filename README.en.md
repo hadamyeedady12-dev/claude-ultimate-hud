@@ -63,20 +63,18 @@ Then run:
 ## Configuration
 
 ```
-/claude-ultimate-hud:setup [language] [plan]
+/claude-ultimate-hud:setup
 ```
 
-| Argument | Options | Default |
-|----------|---------|---------|
-| language | `auto`, `en`, `ko` | `auto` |
-| plan | `pro`, `max100`, `max200` | `max200` |
+Running the command will show an interactive menu to select your plan:
 
-Examples:
-```
-/claude-ultimate-hud:setup ko max100   # Korean, Max $100 plan
-/claude-ultimate-hud:setup en pro      # English, Pro plan
-/claude-ultimate-hud:setup auto max200 # Auto language, Max $200 plan
-```
+| Plan | Description |
+|------|-------------|
+| `max200` | Max $200/month (20x) - 5h + 7d all + 7d Sonnet **(Recommended)** |
+| `max100` | Max $100/month (5x) - 5h + 7d all + 7d Sonnet |
+| `pro` | Pro - 5h only |
+
+Language is auto-detected from your system. To change manually, edit `~/.claude/claude-ultimate-hud.local.json` and set `language` to `en` or `ko`.
 
 ## Requirements
 
@@ -124,6 +122,7 @@ Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 - 🎨 **UI**: Combined 7d limits display (`7d: all 3% │ Sonnet 0%`)
 - 🧹 **Code**: Remove duplicates, unused functions
 - ❌ **Removed**: Cost display from status line
+- ⚙️ **Setup**: Interactive plan selection, auto language detection
 
 ### v1.0.2
 - Initial release
