@@ -12,7 +12,6 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **모델 표시**: 현재 모델 (Opus, Sonnet, Haiku)
 - 📊 **프로그레스 바**: 컨텍스트 사용률 색상 표시 (초록 → 노랑 → 빨강)
 - 📈 **토큰 수**: 현재/전체 토큰 (K/M 형식)
-- 💰 **비용 추적**: 세션 비용 (USD)
 - ⏱️ **Rate Limits**: 5시간/7일 제한 및 리셋 카운트다운
 
 ### claude-hud에서 가져온 기능
@@ -29,7 +28,7 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 ## 출력 예시
 
 ```
-🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ $0.04 │ 5시간: 12% (3시간59분) │ 7일(all): 18% │ 7일(소넷): 1%
+🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일(all): 18% │ 7일(소넷): 1%
 📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: 패턴 찾는 중... │ ✓ librarian (2s)
