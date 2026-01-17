@@ -5,16 +5,16 @@
     "email": ""
   },
   "metadata": {
-    "description": "Ultimate status line combining rate limits, cost tracking, project info, tool activity, and todo progress",
-    "version": "1.0.0"
+    "description": "Ultimate status line combining rate limits, project info, tool activity, and todo progress",
+    "version": "1.1.2"
   },
   "plugins": [
     {
       "name": "claude-ultimate-hud",
       "source": "./",
-      "description": "All-in-one status line: model info, context usage, cost tracking, rate limits (5h/7d), project details with git branch, CLAUDE.md/rules/MCPs/hooks counts, tool activity, agent status, and todo progress. Supports Max and Pro plans with i18n (English/Korean).",
+      "description": "All-in-one status line: model info, context usage, rate limits (5h/7d), project details with git branch, CLAUDE.md/rules/MCPs/hooks counts, tool activity, agent status, and todo progress. Supports Max and Pro plans with i18n (English/Korean).",
       "category": "monitoring",
-      "tags": ["statusline", "hud", "monitoring", "rate-limits", "cost", "tools", "agents", "todos", "i18n"]
+      "tags": ["statusline", "hud", "monitoring", "rate-limits", "tools", "agents", "todos", "i18n"]
     }
   ]
 }
