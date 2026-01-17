@@ -37,15 +37,29 @@ function countHooksInFile(filePath: string): number {
   return 0;
 }
 
-function countRulesInDir(rulesDir: string): number {
+const MAX_RECURSION_DEPTH = 10;
+
+function countRulesInDir(rulesDir: string, depth = 0, visited = new Set<string>()): number {
   if (!fs.existsSync(rulesDir)) return 0;
+  if (depth > MAX_RECURSION_DEPTH) return 0;
+
+  // Resolve real path to prevent symlink loops
+  let realPath: string;
+  try {
+    realPath = fs.realpathSync(rulesDir);
+    if (visited.has(realPath)) return 0;
+    visited.add(realPath);
+  } catch {
+    return 0;
+  }
+
   let count = 0;
   try {
     const entries = fs.readdirSync(rulesDir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(rulesDir, entry.name);
       if (entry.isDirectory()) {
-        count += countRulesInDir(fullPath);
+        count += countRulesInDir(fullPath, depth + 1, visited);
       } else if (entry.isFile() && entry.name.endsWith('.md')) {
         count++;
       }

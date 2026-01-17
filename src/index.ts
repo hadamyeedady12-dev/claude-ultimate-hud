@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
+import { existsSync, statSync } from 'node:fs';
 
 import type { StdinInput, Config, RenderContext } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
@@ -16,6 +17,27 @@ import { getTranslations } from './utils/i18n.js';
 import { render } from './render/index.js';
 
 const CONFIG_PATH = join(homedir(), '.claude', 'claude-ultimate-hud.local.json');
+
+function isValidDirectory(p: string): boolean {
+  if (!p || !isAbsolute(p)) return false;
+  try {
+    return existsSync(p) && statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function isValidTranscriptPath(p: string): boolean {
+  if (!p) return true; // Empty path is allowed
+  if (!isAbsolute(p)) return false;
+  // Only allow paths within ~/.claude directory
+  const claudeDir = join(homedir(), '.claude');
+  try {
+    return p.startsWith(claudeDir) && existsSync(p);
+  } catch {
+    return false;
+  }
+}
 
 async function readStdin(): Promise<StdinInput | null> {
   try {
@@ -51,10 +73,12 @@ async function main(): Promise<void> {
   }
 
   const transcriptPath = stdin.transcript_path ?? '';
-  const transcript = await parseTranscript(transcriptPath);
+  const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : '';
+  const transcript = await parseTranscript(validTranscriptPath);
 
-  const configCounts = await countConfigs(stdin.cwd);
-  const gitBranch = await getGitBranch(stdin.cwd);
+  const validCwd = isValidDirectory(stdin.cwd ?? '') ? stdin.cwd : undefined;
+  const configCounts = await countConfigs(validCwd);
+  const gitBranch = await getGitBranch(validCwd);
   const sessionDuration = formatSessionDuration(transcript.sessionStart);
   const rateLimits = await fetchUsageLimits(config.cache.ttlSeconds);
 

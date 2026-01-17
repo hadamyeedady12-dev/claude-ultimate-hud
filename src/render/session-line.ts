@@ -1,6 +1,6 @@
 import type { RenderContext, Translations } from '../types.js';
 import { COLORS, RESET, colorize, getColorForPercent, renderProgressBar } from '../utils/colors.js';
-import { formatTokens, formatCost, formatTimeRemaining, shortenModelName } from '../utils/formatters.js';
+import { formatTokens, formatTimeRemaining, shortenModelName } from '../utils/formatters.js';
 import { AUTOCOMPACT_BUFFER } from '../constants.js';
 
 const SEP = ` ${COLORS.dim}│${RESET} `;
@@ -28,8 +28,6 @@ export function renderSessionLine(ctx: RenderContext, t: Translations): string {
   parts.push(colorize(`${percent}%`, percentColor));
 
   parts.push(`${formatTokens(currentTokens)}/${formatTokens(totalTokens)}`);
-
-  parts.push(colorize(formatCost(ctx.stdin.cost.total_cost_usd), COLORS.yellow));
 
   const rateParts = buildRateLimitsSection(ctx, t);
   if (rateParts) {

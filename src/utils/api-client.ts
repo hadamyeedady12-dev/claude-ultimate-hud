@@ -5,7 +5,8 @@ import type { UsageLimits } from '../types.js';
 import { getCredentials } from './credentials.js';
 
 const API_TIMEOUT_MS = 5000;
-const CACHE_FILE = path.join(os.tmpdir(), 'claude-ultimate-hud-cache.json');
+const CACHE_DIR = path.join(os.homedir(), '.claude');
+const CACHE_FILE = path.join(CACHE_DIR, 'claude-ultimate-hud-cache.json');
 
 interface CacheEntry {
   data: UsageLimits;
@@ -31,7 +32,7 @@ export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | n
     return fileCache;
   }
 
-  const token = await getCredentials();
+  let token: string | null = await getCredentials();
   if (!token) return null;
 
   try {
@@ -50,6 +51,9 @@ export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | n
       signal: controller.signal,
     });
 
+    // Clear token from memory after use
+    token = null;
+
     clearTimeout(timeout);
 
     if (!response.ok) return null;
@@ -67,6 +71,8 @@ export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | n
 
     return limits;
   } catch {
+    // Clear token on error as well
+    token = null;
     return null;
   }
 }
@@ -85,6 +91,11 @@ function loadFileCache(ttlSeconds: number): UsageLimits | null {
 
 function saveFileCache(data: UsageLimits): void {
   try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }));
+    // Ensure cache directory exists
+    if (!fs.existsSync(CACHE_DIR)) {
+      fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
+    }
+    // Write cache file with restrictive permissions (owner read/write only)
+    fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }), { mode: 0o600 });
   } catch {}
 }

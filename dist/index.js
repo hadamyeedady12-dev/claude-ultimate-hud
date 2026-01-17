@@ -2,8 +2,9 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join3 } from "node:path";
+import { join as join3, isAbsolute } from "node:path";
 import { homedir as homedir3 } from "node:os";
+import { existsSync as existsSync4, statSync as statSync2 } from "node:fs";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
@@ -61,9 +62,6 @@ function formatTokens(n) {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${Math.round(n / 1e3)}K`;
   return n.toString();
-}
-function formatCost(usd) {
-  return `$${usd.toFixed(2)}`;
 }
 function formatTimeRemaining(resetAt, t) {
   const resetTime = new Date(resetAt).getTime();
@@ -148,7 +146,8 @@ async function getCredentialsFromFile() {
 
 // src/utils/api-client.ts
 var API_TIMEOUT_MS = 5e3;
-var CACHE_FILE = path2.join(os.tmpdir(), "claude-ultimate-hud-cache.json");
+var CACHE_DIR = path2.join(os.homedir(), ".claude");
+var CACHE_FILE = path2.join(CACHE_DIR, "claude-ultimate-hud-cache.json");
 var usageCache = null;
 function isCacheValid(ttlSeconds) {
   if (!usageCache) return false;
@@ -164,7 +163,7 @@ async function fetchUsageLimits(ttlSeconds = 60) {
     usageCache = { data: fileCache, timestamp: Date.now() };
     return fileCache;
   }
-  const token = await getCredentials();
+  let token = await getCredentials();
   if (!token) return null;
   try {
     const controller = new AbortController();
@@ -180,6 +179,7 @@ async function fetchUsageLimits(ttlSeconds = 60) {
       },
       signal: controller.signal
     });
+    token = null;
     clearTimeout(timeout);
     if (!response.ok) return null;
     const data = await response.json();
@@ -192,6 +192,7 @@ async function fetchUsageLimits(ttlSeconds = 60) {
     saveFileCache(limits);
     return limits;
   } catch {
+    token = null;
     return null;
   }
 }
@@ -208,7 +209,10 @@ function loadFileCache(ttlSeconds) {
 }
 function saveFileCache(data) {
   try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }));
+    if (!fs.existsSync(CACHE_DIR)) {
+      fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 448 });
+    }
+    fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }), { mode: 384 });
   } catch {
   }
 }
@@ -247,15 +251,25 @@ function countHooksInFile(filePath) {
   }
   return 0;
 }
-function countRulesInDir(rulesDir) {
+var MAX_RECURSION_DEPTH = 10;
+function countRulesInDir(rulesDir, depth = 0, visited = /* @__PURE__ */ new Set()) {
   if (!fs2.existsSync(rulesDir)) return 0;
+  if (depth > MAX_RECURSION_DEPTH) return 0;
+  let realPath;
+  try {
+    realPath = fs2.realpathSync(rulesDir);
+    if (visited.has(realPath)) return 0;
+    visited.add(realPath);
+  } catch {
+    return 0;
+  }
   let count = 0;
   try {
     const entries = fs2.readdirSync(rulesDir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path3.join(rulesDir, entry.name);
       if (entry.isDirectory()) {
-        count += countRulesInDir(fullPath);
+        count += countRulesInDir(fullPath, depth + 1, visited);
       } else if (entry.isFile() && entry.name.endsWith(".md")) {
         count++;
       }
@@ -436,8 +450,16 @@ function extractTarget(toolName, input) {
 
 // src/utils/git.ts
 import { execFileSync as execFileSync2 } from "node:child_process";
+import { existsSync as existsSync3, statSync } from "node:fs";
 async function getGitBranch(cwd) {
   if (!cwd) return void 0;
+  try {
+    if (!existsSync3(cwd) || !statSync(cwd).isDirectory()) {
+      return void 0;
+    }
+  } catch {
+    return void 0;
+  }
   try {
     const result = execFileSync2("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
       cwd,
@@ -515,7 +537,6 @@ function renderSessionLine(ctx, t) {
   const percentColor = getColorForPercent(percent);
   parts.push(colorize(`${percent}%`, percentColor));
   parts.push(`${formatTokens(currentTokens)}/${formatTokens(totalTokens)}`);
-  parts.push(colorize(formatCost(ctx.stdin.cost.total_cost_usd), COLORS.yellow));
   const rateParts = buildRateLimitsSection(ctx, t);
   if (rateParts) {
     parts.push(rateParts);
@@ -667,6 +688,24 @@ function render(ctx, t) {
 
 // src/index.ts
 var CONFIG_PATH = join3(homedir3(), ".claude", "claude-ultimate-hud.local.json");
+function isValidDirectory(p) {
+  if (!p || !isAbsolute(p)) return false;
+  try {
+    return existsSync4(p) && statSync2(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+function isValidTranscriptPath(p) {
+  if (!p) return true;
+  if (!isAbsolute(p)) return false;
+  const claudeDir = join3(homedir3(), ".claude");
+  try {
+    return p.startsWith(claudeDir) && existsSync4(p);
+  } catch {
+    return false;
+  }
+}
 async function readStdin() {
   try {
     const chunks = [];
@@ -697,9 +736,11 @@ async function main() {
     return;
   }
   const transcriptPath = stdin.transcript_path ?? "";
-  const transcript = await parseTranscript(transcriptPath);
-  const configCounts = await countConfigs(stdin.cwd);
-  const gitBranch = await getGitBranch(stdin.cwd);
+  const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : "";
+  const transcript = await parseTranscript(validTranscriptPath);
+  const validCwd = isValidDirectory(stdin.cwd ?? "") ? stdin.cwd : void 0;
+  const configCounts = await countConfigs(validCwd);
+  const gitBranch = await getGitBranch(validCwd);
   const sessionDuration = formatSessionDuration(transcript.sessionStart);
   const rateLimits = await fetchUsageLimits(config.cache.ttlSeconds);
   const ctx = {
