@@ -3,8 +3,9 @@ import type { Config, Translations } from '../types.js';
 const EN: Translations = {
   labels: {
     '5h': '5h',
-    '7d_all': '7d',
-    '7d_sonnet': '7d(Sonnet)',
+    '7d': '7d',
+    '7d_all': 'all',
+    '7d_sonnet': 'Sonnet',
   },
   time: {
     hours: ' hours',
@@ -20,8 +21,9 @@ const EN: Translations = {
 const KO: Translations = {
   labels: {
     '5h': '5시간',
-    '7d_all': '7일',
-    '7d_sonnet': '7일(소넷)',
+    '7d': '7일',
+    '7d_all': '전체',
+    '7d_sonnet': '소넷',
   },
   time: {
     hours: '시간',

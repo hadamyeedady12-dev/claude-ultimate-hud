@@ -476,8 +476,9 @@ async function getGitBranch(cwd) {
 var EN = {
   labels: {
     "5h": "5h",
-    "7d_all": "7d",
-    "7d_sonnet": "7d(Sonnet)"
+    "7d": "7d",
+    "7d_all": "all",
+    "7d_sonnet": "Sonnet"
   },
   time: {
     hours: " hours",
@@ -492,8 +493,9 @@ var EN = {
 var KO = {
   labels: {
     "5h": "5\uC2DC\uAC04",
-    "7d_all": "7\uC77C",
-    "7d_sonnet": "7\uC77C(\uC18C\uB137)"
+    "7d": "7\uC77C",
+    "7d_all": "\uC804\uCCB4",
+    "7d_sonnet": "\uC18C\uB137"
   },
   time: {
     hours: "\uC2DC\uAC04",
@@ -558,15 +560,21 @@ function buildRateLimitsSection(ctx, t) {
     parts.push(text);
   }
   const isMaxPlan = ctx.config.plan === "max100" || ctx.config.plan === "max200";
-  if (isMaxPlan && limits.seven_day) {
-    const pct = Math.round(limits.seven_day.utilization);
-    const color = getColorForPercent(pct);
-    parts.push(`${t.labels["7d_all"]}: ${colorize(`${pct}%`, color)}`);
-  }
-  if (isMaxPlan && limits.seven_day_sonnet) {
-    const pct = Math.round(limits.seven_day_sonnet.utilization);
-    const color = getColorForPercent(pct);
-    parts.push(`${t.labels["7d_sonnet"]}: ${colorize(`${pct}%`, color)}`);
+  if (isMaxPlan && (limits.seven_day || limits.seven_day_sonnet)) {
+    const sevenDayParts = [];
+    if (limits.seven_day) {
+      const pct = Math.round(limits.seven_day.utilization);
+      const color = getColorForPercent(pct);
+      sevenDayParts.push(`${t.labels["7d_all"]} ${colorize(`${pct}%`, color)}`);
+    }
+    if (limits.seven_day_sonnet) {
+      const pct = Math.round(limits.seven_day_sonnet.utilization);
+      const color = getColorForPercent(pct);
+      sevenDayParts.push(`${t.labels["7d_sonnet"]} ${colorize(`${pct}%`, color)}`);
+    }
+    if (sevenDayParts.length > 0) {
+      parts.push(`${t.labels["7d"]}: ${sevenDayParts.join(" / ")}`);
+    }
   }
   return parts.length > 0 ? parts.join(SEP) : null;
 }

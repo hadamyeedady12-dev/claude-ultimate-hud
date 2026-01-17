@@ -56,16 +56,24 @@ function buildRateLimitsSection(ctx: RenderContext, t: Translations): string | n
 
   const isMaxPlan = ctx.config.plan === 'max100' || ctx.config.plan === 'max200';
 
-  if (isMaxPlan && limits.seven_day) {
-    const pct = Math.round(limits.seven_day.utilization);
-    const color = getColorForPercent(pct);
-    parts.push(`${t.labels['7d_all']}: ${colorize(`${pct}%`, color)}`);
-  }
+  if (isMaxPlan && (limits.seven_day || limits.seven_day_sonnet)) {
+    const sevenDayParts: string[] = [];
 
-  if (isMaxPlan && limits.seven_day_sonnet) {
-    const pct = Math.round(limits.seven_day_sonnet.utilization);
-    const color = getColorForPercent(pct);
-    parts.push(`${t.labels['7d_sonnet']}: ${colorize(`${pct}%`, color)}`);
+    if (limits.seven_day) {
+      const pct = Math.round(limits.seven_day.utilization);
+      const color = getColorForPercent(pct);
+      sevenDayParts.push(`${t.labels['7d_all']} ${colorize(`${pct}%`, color)}`);
+    }
+
+    if (limits.seven_day_sonnet) {
+      const pct = Math.round(limits.seven_day_sonnet.utilization);
+      const color = getColorForPercent(pct);
+      sevenDayParts.push(`${t.labels['7d_sonnet']} ${colorize(`${pct}%`, color)}`);
+    }
+
+    if (sevenDayParts.length > 0) {
+      parts.push(`${t.labels['7d']}: ${sevenDayParts.join(' / ')}`);
+    }
   }
 
   return parts.length > 0 ? parts.join(SEP) : null;

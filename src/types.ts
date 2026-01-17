@@ -94,6 +94,7 @@ export interface RenderContext {
 export interface Translations {
   labels: {
     '5h': string;
+    '7d': string;
     '7d_all': string;
     '7d_sonnet': string;
   };
