@@ -72,7 +72,7 @@ function buildRateLimitsSection(ctx: RenderContext, t: Translations): string | n
     }
 
     if (sevenDayParts.length > 0) {
-      parts.push(`${t.labels['7d']}: ${sevenDayParts.join(' / ')}`);
+      parts.push(`${t.labels['7d']}: ${sevenDayParts.join(SEP)}`);
     }
   }
 

@@ -573,7 +573,7 @@ function buildRateLimitsSection(ctx, t) {
       sevenDayParts.push(`${t.labels["7d_sonnet"]} ${colorize(`${pct}%`, color)}`);
     }
     if (sevenDayParts.length > 0) {
-      parts.push(`${t.labels["7d"]}: ${sevenDayParts.join(" / ")}`);
+      parts.push(`${t.labels["7d"]}: ${sevenDayParts.join(SEP)}`);
     }
   }
   return parts.length > 0 ? parts.join(SEP) : null;
