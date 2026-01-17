@@ -117,6 +117,17 @@ Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
 
 Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
+## Changelog
+
+### v1.1.2
+- 🔒 **Security**: Path validation, cache file permissions, recursion depth limit
+- 🎨 **UI**: Combined 7d limits display (`7d: all 3% │ Sonnet 0%`)
+- 🧹 **Code**: Remove duplicates, unused functions
+- ❌ **Removed**: Cost display from status line
+
+### v1.0.2
+- Initial release
+
 ## License
 
 MIT
