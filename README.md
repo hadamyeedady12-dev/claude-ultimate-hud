@@ -1,43 +1,43 @@
 # claude-ultimate-hud
 
-[English](README.md) | [한국어](README.ko.md)
+[English](README.en.md) | [한국어](README.md)
 
-Ultimate status line plugin for Claude Code - combines the best of [claude-dashboard](https://github.com/uppinote20/claude-dashboard) and [claude-hud](https://github.com/jarrodwatts/claude-hud).
+Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboard](https://github.com/uppinote20/claude-dashboard)와 [claude-hud](https://github.com/jarrodwatts/claude-hud)의 장점을 결합했습니다.
 
-![Screenshot](assets/screenshot.png)
+![스크린샷](assets/screenshot.png)
 
-## Features
+## 기능
 
-### From claude-dashboard
-- 🤖 **Model Display**: Current model (Opus, Sonnet, Haiku)
-- 📊 **Progress Bar**: Color-coded context usage (green → yellow → red)
-- 📈 **Token Count**: Current/total tokens (K/M format)
-- ⏱️ **Rate Limits**: 5h/7d limits with reset countdown
+### claude-dashboard에서 가져온 기능
+- 🤖 **모델 표시**: 현재 모델 (Opus, Sonnet, Haiku)
+- 📊 **프로그레스 바**: 컨텍스트 사용률 색상 표시 (초록 → 노랑 → 빨강)
+- 📈 **토큰 수**: 현재/전체 토큰 (K/M 형식)
+- ⏱️ **Rate Limits**: 5시간/7일 제한 및 리셋 카운트다운
 
-### From claude-hud
-- 📁 **Project Info**: Directory name with git branch
-- 📋 **Config Counts**: CLAUDE.md, rules, MCPs, hooks
-- ⏱️ **Session Duration**: How long you've been working
-- 🔧 **Tool Activity**: Running/completed tools with counts
-- 🤖 **Agent Status**: Subagent progress tracking
-- ✅ **Todo Progress**: Current task and completion rate
+### claude-hud에서 가져온 기능
+- 📁 **프로젝트 정보**: 디렉토리명 + Git 브랜치
+- 📋 **설정 개수**: CLAUDE.md, rules, MCPs, hooks
+- ⏱️ **세션 시간**: 작업 시간
+- 🔧 **툴 활동**: 실행 중/완료된 툴 및 횟수
+- 🤖 **에이전트 상태**: 서브에이전트 진행 상황
+- ✅ **TODO 진행률**: 현재 작업 및 완료율
 
-### Additional
-- 🌐 **i18n**: English and Korean support (auto-detect)
+### 추가 기능
+- 🌐 **다국어 지원**: 영어/한국어 자동 감지
 
-## Output Example
+## 출력 예시
 
 ```
-🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ 5h: 12% (3h59m) │ 7d: all 18% │ Sonnet 1%
+🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일: 전체 18% │ 소넷 1%
 📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
-◐ explore: Finding patterns... │ ✓ librarian (2s)
-▸ Implement auth flow (2/5)
+◐ explore: 패턴 찾는 중... │ ✓ librarian (2s)
+▸ 인증 플로우 구현 (2/5)
 ```
 
-## Installation
+## 설치
 
-### From Plugin Marketplace
+### 플러그인 마켓플레이스에서 설치
 
 ```
 /plugin marketplace add hadamyeedady12-dev/claude-ultimate-hud
@@ -45,9 +45,9 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 /claude-ultimate-hud:setup
 ```
 
-> **Note**: Marketplace installs to `~/.claude/plugins/cache/claude-ultimate-hud/`
+> **참고**: 마켓플레이스 설치 경로는 `~/.claude/plugins/cache/claude-ultimate-hud/`
 
-### Manual Installation
+### 수동 설치
 
 ```bash
 git clone https://github.com/hadamyeedady12-dev/claude-ultimate-hud.git ~/.claude/plugins/claude-ultimate-hud
@@ -55,79 +55,79 @@ cd ~/.claude/plugins/claude-ultimate-hud
 bun install && bun run build
 ```
 
-Then run:
+그 다음 실행:
 ```
 /claude-ultimate-hud:setup
 ```
 
-## Configuration
+## 설정
 
 ```
-/claude-ultimate-hud:setup [language] [plan]
+/claude-ultimate-hud:setup [언어] [플랜]
 ```
 
-| Argument | Options | Default |
-|----------|---------|---------|
-| language | `auto`, `en`, `ko` | `auto` |
-| plan | `pro`, `max100`, `max200` | `max200` |
+| 인자 | 옵션 | 기본값 |
+|------|------|--------|
+| 언어 | `auto`, `en`, `ko` | `auto` |
+| 플랜 | `pro`, `max100`, `max200` | `max200` |
 
-Examples:
+예시:
 ```
-/claude-ultimate-hud:setup ko max100   # Korean, Max $100 plan
-/claude-ultimate-hud:setup en pro      # English, Pro plan
-/claude-ultimate-hud:setup auto max200 # Auto language, Max $200 plan
+/claude-ultimate-hud:setup ko max100   # 한국어, Max $100 플랜
+/claude-ultimate-hud:setup en pro      # 영어, Pro 플랜
+/claude-ultimate-hud:setup auto max200 # 자동 언어, Max $200 플랜
 ```
 
-## Requirements
+## 요구사항
 
 - **Claude Code** v1.0.80+
-- **Bun** or **Node.js** 18+
+- **Bun** 또는 **Node.js** 18+
 
-## Color Legend
+## 색상 범례
 
-| Color | Usage % | Meaning |
-|-------|---------|---------|
-| 🟢 Green | 0-50% | Safe |
-| 🟡 Yellow | 51-80% | Warning |
-| 🔴 Red | 81-100% | Critical |
+| 색상 | 사용률 | 의미 |
+|------|--------|------|
+| 🟢 초록 | 0-50% | 안전 |
+| 🟡 노랑 | 51-80% | 주의 |
+| 🔴 빨강 | 81-100% | 위험 |
 
-## Plan Differences
+## 플랜별 차이
 
-| Feature | pro | max100 | max200 |
-|---------|-----|--------|--------|
-| 5h rate limit | ✅ | ✅ | ✅ |
-| Reset countdown | ✅ | ✅ | ✅ |
-| 7d all models | ❌ | ✅ | ✅ |
-| 7d Sonnet only | ❌ | ✅ | ✅ |
+| 기능 | pro | max100 | max200 |
+|------|-----|--------|--------|
+| 5시간 rate limit | ✅ | ✅ | ✅ |
+| 리셋 카운트다운 | ✅ | ✅ | ✅ |
+| 7일 전체 모델 | ❌ | ✅ | ✅ |
+| 7일 Sonnet 전용 | ❌ | ✅ | ✅ |
 
-### Rate Limits Detail
+### Rate Limits 상세
 
-| Plan | 5-hour | Weekly Sonnet | Weekly Opus |
-|------|--------|---------------|-------------|
-| Max $100 (5x) | ~225 messages | 140-280 hours | 15-35 hours |
-| Max $200 (20x) | ~900 messages | 240-480 hours | 24-40 hours |
+| 플랜 | 5시간 | 주간 Sonnet | 주간 Opus |
+|------|-------|-------------|-----------|
+| Max $100 (5x) | ~225 메시지 | 140-280시간 | 15-35시간 |
+| Max $200 (20x) | ~900 메시지 | 240-480시간 | 24-40시간 |
 
-## Credits
+## 크레딧
 
-This plugin combines features from:
+이 플러그인은 다음 프로젝트의 기능을 결합했습니다:
 - [claude-dashboard](https://github.com/uppinote20/claude-dashboard) by uppinote
 - [claude-hud](https://github.com/jarrodwatts/claude-hud) by Jarrod Watts
 
-Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
+**별아해** 님의 소중한 피드백과 버그 수정에 감사드립니다.
 
-Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
+[OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
-## Changelog
+## 변경 이력
 
 ### v1.1.2
-- 🔒 **Security**: Path validation, cache file permissions, recursion depth limit
-- 🎨 **UI**: Combined 7d limits display (`7d: all 3% │ Sonnet 0%`)
-- 🧹 **Code**: Remove duplicates, unused functions
-- ❌ **Removed**: Cost display from status line
+- 🔒 **보안 강화**: 경로 검증, 캐시 파일 권한 설정, 재귀 깊이 제한
+- 🎨 **UI 개선**: 7일 제한 통합 표시 (`7일: 전체 3% │ 소넷 0%`)
+- 🧹 **코드 정리**: 중복 제거, 미사용 함수 삭제
+- ❌ **비용 표시 제거**: 상태줄에서 비용($) 표시 삭제
 
 ### v1.0.2
-- Initial release
+- 초기 릴리즈
 
-## License
+## 라이선스
 
 MIT
