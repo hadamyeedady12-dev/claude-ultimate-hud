@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import type { Config, Translations } from '../types.js';
 
 const EN: Translations = {
@@ -36,9 +37,34 @@ const KO: Translations = {
   },
 };
 
+function getMacOSLocale(): string {
+  if (process.platform !== 'darwin') return '';
+  try {
+    return execSync('defaults read -g AppleLocale', { encoding: 'utf-8', timeout: 1000 }).trim();
+  } catch {
+    return '';
+  }
+}
+
+function isValidLangCode(lang: string): boolean {
+  if (!lang) return false;
+  const lower = lang.toLowerCase();
+  // Skip generic/neutral locales that don't indicate a specific language
+  return !lower.startsWith('c.') && lower !== 'c' && lower !== 'posix';
+}
+
 function detectLanguage(): 'en' | 'ko' {
-  const lang = process.env.LANG || process.env.LANGUAGE || process.env.LC_ALL || '';
-  if (lang.toLowerCase().startsWith('ko')) return 'ko';
+  // Check environment variables first
+  const envLang = process.env.LANG || process.env.LANGUAGE || process.env.LC_ALL || '';
+  if (isValidLangCode(envLang)) {
+    if (envLang.toLowerCase().startsWith('ko')) return 'ko';
+    return 'en';
+  }
+
+  // Fallback: On macOS, check system locale via AppleLocale
+  const macLocale = getMacOSLocale();
+  if (macLocale.toLowerCase().startsWith('ko')) return 'ko';
+
   return 'en';
 }
 
