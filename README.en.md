@@ -117,6 +117,10 @@ Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## Changelog
 
+### v1.1.4
+- 🐛 **Bug Fix**: Fix language auto-detection on macOS when `LANG=C.UTF-8`
+  - Now checks `AppleLocale` setting for system language detection
+
 ### v1.1.2
 - 🔒 **Security**: Path validation, cache file permissions, recursion depth limit
 - 🎨 **UI**: Combined 7d limits display (`7d: all 3% │ Sonnet 0%`)
