@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { ConfigCounts } from '../types.js';
+import { debugError } from './errors.js';
 
 function readJsonFile(filePath: string): Record<string, unknown> | null {
   if (!fs.existsSync(filePath)) return null;
@@ -64,7 +65,9 @@ function countRulesInDir(rulesDir: string, depth = 0, visited = new Set<string>(
         count++;
       }
     }
-  } catch {}
+  } catch (e) {
+    debugError('readdir rules', e);
+  }
   return count;
 }
 

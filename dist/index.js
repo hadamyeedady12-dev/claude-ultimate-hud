@@ -2,7 +2,7 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join3, isAbsolute } from "node:path";
+import { join as join3, isAbsolute, resolve as resolve2, sep } from "node:path";
 import { homedir as homedir3 } from "node:os";
 import { existsSync as existsSync4, statSync as statSync2 } from "node:fs";
 
@@ -14,6 +14,21 @@ var DEFAULT_CONFIG = {
     ttlSeconds: 60
   }
 };
+
+// src/constants.ts
+var AUTOCOMPACT_BUFFER = 45000;
+var PROGRESS_BAR_WIDTH = 10;
+var MAX_RUNNING_TOOLS = 2;
+var MAX_COMPLETED_TOOL_TYPES = 4;
+var MAX_AGENTS_DISPLAY = 3;
+var MAX_COMPLETED_AGENTS = 2;
+var MAX_AGENT_DESC_LENGTH = 40;
+var MAX_TODO_CONTENT_LENGTH = 50;
+var MAX_TRANSCRIPT_TOOLS = 20;
+var MAX_TRANSCRIPT_AGENTS = 10;
+var STDIN_TIMEOUT_MS = 5000;
+var EXEC_TIMEOUT_MS = 3000;
+var API_TIMEOUT_MS = 5000;
 
 // src/utils/colors.ts
 var COLORS = {
@@ -51,7 +66,7 @@ function getColorForPercent(percent) {
     return COLORS.yellow;
   return COLORS.red;
 }
-function renderProgressBar(percent, width = 10) {
+function renderProgressBar(percent, width = PROGRESS_BAR_WIDTH) {
   const filled = Math.round(percent / 100 * width);
   const empty = width - filled;
   const color = getColorForPercent(percent);
@@ -115,12 +130,35 @@ function truncatePath(filePath, maxLen = 20) {
 import fs from "node:fs";
 import os from "node:os";
 import path2 from "node:path";
+import crypto from "node:crypto";
 
 // src/utils/credentials.ts
-import { execFileSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
+
+// src/utils/errors.ts
+var IS_DEBUG = process.env.CLAUDE_HUD_DEBUG === "1";
+function debugError(context, error) {
+  if (!IS_DEBUG)
+    return;
+  const msg = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`[claude-ultimate-hud] ${context}: ${msg}
+`);
+}
+
+// src/utils/credentials.ts
+function execFileAsync(cmd, args, options) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, options, (error, stdout) => {
+      if (error)
+        reject(error);
+      else
+        resolve(String(stdout));
+    });
+  });
+}
 async function getCredentials() {
   try {
     if (process.platform === "darwin") {
@@ -133,26 +171,32 @@ async function getCredentials() {
 }
 async function getCredentialsFromKeychain() {
   try {
-    const result = execFileSync("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"], { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
-    const creds = JSON.parse(result);
+    const result = await execFileAsync("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"], { encoding: "utf-8", timeout: EXEC_TIMEOUT_MS });
+    const creds = JSON.parse(result.trim());
     return creds?.claudeAiOauth?.accessToken ?? null;
-  } catch {
+  } catch (e) {
+    debugError("keychain read", e);
     return await getCredentialsFromFile();
   }
 }
 async function getCredentialsFromFile() {
   try {
     const credPath = join(homedir(), ".claude", ".credentials.json");
+    const fileStat = await stat(credPath);
+    if ((fileStat.mode & 63) !== 0) {
+      process.stderr.write(`[claude-ultimate-hud] WARNING: ${credPath} has insecure permissions (${(fileStat.mode & 511).toString(8)}). Expected 0600.
+`);
+    }
     const content = await readFile(credPath, "utf-8");
     const creds = JSON.parse(content);
     return creds?.claudeAiOauth?.accessToken ?? null;
-  } catch {
+  } catch (e) {
+    debugError("credentials file", e);
     return null;
   }
 }
 
 // src/utils/api-client.ts
-var API_TIMEOUT_MS = 5000;
 var CACHE_DIR = path2.join(os.homedir(), ".claude");
 var CACHE_FILE = path2.join(CACHE_DIR, "claude-ultimate-hud-cache.json");
 var usageCache = null;
@@ -201,8 +245,9 @@ async function fetchUsageLimits(ttlSeconds = 60) {
     usageCache = { data: limits, timestamp: Date.now() };
     saveFileCache(limits);
     return limits;
-  } catch {
+  } catch (e) {
     token = null;
+    debugError("API fetch", e);
     return null;
   }
 }
@@ -224,8 +269,12 @@ function saveFileCache(data) {
     if (!fs.existsSync(CACHE_DIR)) {
       fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 448 });
     }
-    fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }), { mode: 384 });
-  } catch {}
+    const tmpFile = CACHE_FILE + "." + crypto.randomBytes(4).toString("hex") + ".tmp";
+    fs.writeFileSync(tmpFile, JSON.stringify({ data, timestamp: Date.now() }), { mode: 384 });
+    fs.renameSync(tmpFile, CACHE_FILE);
+  } catch (e) {
+    debugError("cache write", e);
+  }
 }
 
 // src/utils/config-counter.ts
@@ -290,7 +339,9 @@ function countRulesInDir(rulesDir, depth = 0, visited = new Set) {
         count++;
       }
     }
-  } catch {}
+  } catch (e) {
+    debugError("readdir rules", e);
+  }
   return count;
 }
 function resolvePath(p) {
@@ -369,6 +420,9 @@ async function countConfigs(cwd) {
 // src/utils/transcript.ts
 import * as fs3 from "node:fs";
 import * as readline from "node:readline";
+function isTranscriptLine(obj) {
+  return typeof obj === "object" && obj !== null;
+}
 async function parseTranscript(transcriptPath) {
   const result = {
     tools: [],
@@ -381,6 +435,8 @@ async function parseTranscript(transcriptPath) {
   const toolMap = new Map;
   const agentMap = new Map;
   let latestTodos = [];
+  let totalLines = 0;
+  let parseErrors = 0;
   try {
     const fileStream = fs3.createReadStream(transcriptPath);
     const rl = readline.createInterface({
@@ -390,14 +446,28 @@ async function parseTranscript(transcriptPath) {
     for await (const line of rl) {
       if (!line.trim())
         continue;
+      totalLines++;
       try {
-        const entry = JSON.parse(line);
-        processEntry(entry, toolMap, agentMap, latestTodos, result);
-      } catch {}
+        const parsed = JSON.parse(line);
+        if (isTranscriptLine(parsed)) {
+          processEntry(parsed, toolMap, agentMap, latestTodos, result);
+        } else {
+          parseErrors++;
+        }
+      } catch (e) {
+        parseErrors++;
+        debugError("transcript parse", e);
+      }
     }
-  } catch {}
-  result.tools = Array.from(toolMap.values()).slice(-20);
-  result.agents = Array.from(agentMap.values()).slice(-10);
+  } catch (e) {
+    debugError("transcript read", e);
+  }
+  if (totalLines > 0 && parseErrors / totalLines > 0.5) {
+    process.stderr.write(`[claude-ultimate-hud] WARNING: ${parseErrors}/${totalLines} transcript lines failed to parse
+`);
+  }
+  result.tools = Array.from(toolMap.values()).slice(-MAX_TRANSCRIPT_TOOLS);
+  result.agents = Array.from(agentMap.values()).slice(-MAX_TRANSCRIPT_AGENTS);
   result.todos = latestTodos;
   return result;
 }
@@ -471,8 +541,18 @@ function extractTarget(toolName, input) {
 }
 
 // src/utils/git.ts
-import { execFileSync as execFileSync2 } from "node:child_process";
+import { execFile as execFile2 } from "node:child_process";
 import { existsSync as existsSync3, statSync } from "node:fs";
+function execFileAsync2(cmd, args, options) {
+  return new Promise((resolve2, reject) => {
+    execFile2(cmd, args, options, (error, stdout) => {
+      if (error)
+        reject(error);
+      else
+        resolve2(String(stdout));
+    });
+  });
+}
 async function getGitBranch(cwd) {
   if (!cwd)
     return;
@@ -484,19 +564,20 @@ async function getGitBranch(cwd) {
     return;
   }
   try {
-    const result = execFileSync2("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+    const result = await execFileAsync2("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
       cwd,
       encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"]
-    }).trim();
-    return result || undefined;
-  } catch {
+      timeout: EXEC_TIMEOUT_MS
+    });
+    return result.trim() || undefined;
+  } catch (e) {
+    debugError("git branch", e);
     return;
   }
 }
 
 // src/utils/i18n.ts
-import { execSync } from "node:child_process";
+import { execFile as execFile3 } from "node:child_process";
 var EN = {
   labels: {
     "5h": "5h",
@@ -524,21 +605,24 @@ var KO = {
   time: {
     hours: "시간",
     minutes: "분",
-    shortHours: "시간",
+    shortHours: "시",
     shortMinutes: "분"
   },
   errors: {
     no_context: "컨텍스트 데이터 없음"
   }
 };
-function getMacOSLocale() {
+function getMacOSLocaleAsync() {
   if (process.platform !== "darwin")
-    return "";
-  try {
-    return execSync("defaults read -g AppleLocale", { encoding: "utf-8", timeout: 1000 }).trim();
-  } catch {
-    return "";
-  }
+    return Promise.resolve("");
+  return new Promise((resolve2) => {
+    execFile3("defaults", ["read", "-g", "AppleLocale"], { encoding: "utf-8", timeout: EXEC_TIMEOUT_MS }, (error, stdout) => {
+      if (error)
+        resolve2("");
+      else
+        resolve2(String(stdout).trim());
+    });
+  });
 }
 function isValidLangCode(lang) {
   if (!lang)
@@ -546,25 +630,22 @@ function isValidLangCode(lang) {
   const lower = lang.toLowerCase();
   return !lower.startsWith("c.") && lower !== "c" && lower !== "posix";
 }
-function detectLanguage() {
+async function detectLanguage() {
   const envLang = process.env.LANG || process.env.LANGUAGE || process.env.LC_ALL || "";
   if (isValidLangCode(envLang)) {
     if (envLang.toLowerCase().startsWith("ko"))
       return "ko";
     return "en";
   }
-  const macLocale = getMacOSLocale();
+  const macLocale = await getMacOSLocaleAsync();
   if (macLocale.toLowerCase().startsWith("ko"))
     return "ko";
   return "en";
 }
-function getTranslations(config) {
-  const lang = config.language === "auto" ? detectLanguage() : config.language;
+async function getTranslations(config) {
+  const lang = config.language === "auto" ? await detectLanguage() : config.language;
   return lang === "ko" ? KO : EN;
 }
-
-// src/constants.ts
-var AUTOCOMPACT_BUFFER = 45000;
 
 // src/render/session-line.ts
 var SEP = ` ${COLORS.dim}│${RESET} `;
@@ -594,7 +675,7 @@ function renderSessionLine(ctx, t) {
 function buildRateLimitsSection(ctx, t) {
   const limits = ctx.rateLimits;
   if (!limits)
-    return colorize("⚠️", COLORS.yellow);
+    return colorize("\uD83D\uDD11 ?", COLORS.yellow);
   const parts = [];
   if (limits.five_hour) {
     const pct = Math.round(limits.five_hour.utilization);
@@ -665,7 +746,7 @@ function renderToolsLine(ctx) {
   const parts = [];
   const runningTools = tools.filter((t) => t.status === "running");
   const completedTools = tools.filter((t) => t.status === "completed" || t.status === "error");
-  for (const tool of runningTools.slice(-2)) {
+  for (const tool of runningTools.slice(-MAX_RUNNING_TOOLS)) {
     const target = tool.target ? truncatePath(tool.target) : "";
     parts.push(`${yellow("◐")} ${cyan(tool.name)}${target ? dim(`: ${target}`) : ""}`);
   }
@@ -674,7 +755,7 @@ function renderToolsLine(ctx) {
     const count = toolCounts.get(tool.name) ?? 0;
     toolCounts.set(tool.name, count + 1);
   }
-  const sortedTools = Array.from(toolCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const sortedTools = Array.from(toolCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, MAX_COMPLETED_TOOL_TYPES);
   for (const [name, count] of sortedTools) {
     parts.push(`${green("✓")} ${name} ${dim(`×${count}`)}`);
   }
@@ -683,8 +764,8 @@ function renderToolsLine(ctx) {
 function renderAgentsLine(ctx) {
   const { agents } = ctx.transcript;
   const runningAgents = agents.filter((a) => a.status === "running");
-  const recentCompleted = agents.filter((a) => a.status === "completed").slice(-2);
-  const toShow = [...runningAgents, ...recentCompleted].slice(-3);
+  const recentCompleted = agents.filter((a) => a.status === "completed").slice(-MAX_COMPLETED_AGENTS);
+  const toShow = [...runningAgents, ...recentCompleted].slice(-MAX_AGENTS_DISPLAY);
   if (toShow.length === 0)
     return null;
   const lines = [];
@@ -698,7 +779,7 @@ function formatAgent(agent) {
   const statusIcon = agent.status === "running" ? yellow("◐") : green("✓");
   const type = magenta(agent.type);
   const model = agent.model ? dim(`[${agent.model}]`) : "";
-  const desc = agent.description ? dim(`: ${truncate(agent.description, 40)}`) : "";
+  const desc = agent.description ? dim(`: ${truncate(agent.description, MAX_AGENT_DESC_LENGTH)}`) : "";
   const elapsed = formatElapsed(agent);
   return `${statusIcon} ${type}${model ? ` ${model}` : ""}${desc} ${dim(`(${elapsed})`)}`;
 }
@@ -728,7 +809,7 @@ function renderTodosLine(ctx) {
     }
     return null;
   }
-  const content = truncate(inProgress.content, 50);
+  const content = truncate(inProgress.content, MAX_TODO_CONTENT_LENGTH);
   const progress = dim(`(${completed}/${total})`);
   return `${yellow("▸")} ${content} ${progress}`;
 }
@@ -765,7 +846,8 @@ function isValidTranscriptPath(p) {
     return false;
   const claudeDir = join3(homedir3(), ".claude");
   try {
-    return p.startsWith(claudeDir) && existsSync4(p);
+    const resolved = resolve2(p);
+    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync4(resolved);
   } catch {
     return false;
   }
@@ -773,12 +855,17 @@ function isValidTranscriptPath(p) {
 async function readStdin() {
   try {
     const chunks = [];
-    for await (const chunk of process.stdin) {
-      chunks.push(Buffer.from(chunk));
-    }
+    const stdinRead = (async () => {
+      for await (const chunk of process.stdin) {
+        chunks.push(Buffer.from(chunk));
+      }
+    })();
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("stdin timeout")), STDIN_TIMEOUT_MS));
+    await Promise.race([stdinRead, timeout]);
     const content = Buffer.concat(chunks).toString("utf-8");
     return JSON.parse(content);
-  } catch {
+  } catch (e) {
+    debugError("stdin read", e);
     return null;
   }
 }
@@ -792,21 +879,22 @@ async function loadConfig() {
   }
 }
 async function main() {
-  const config = await loadConfig();
-  const t = getTranslations(config);
-  const stdin = await readStdin();
+  const [config, stdin] = await Promise.all([loadConfig(), readStdin()]);
+  const t = await getTranslations(config);
   if (!stdin) {
-    console.log(colorize("⚠️", COLORS.yellow));
+    console.log(colorize("⚠️ stdin", COLORS.yellow));
     return;
   }
   const transcriptPath = stdin.transcript_path ?? "";
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : "";
-  const transcript = await parseTranscript(validTranscriptPath);
   const validCwd = isValidDirectory(stdin.cwd ?? "") ? stdin.cwd : undefined;
-  const configCounts = await countConfigs(validCwd);
-  const gitBranch = await getGitBranch(validCwd);
+  const [transcript, configCounts, gitBranch, rateLimits] = await Promise.all([
+    parseTranscript(validTranscriptPath),
+    countConfigs(validCwd),
+    getGitBranch(validCwd),
+    fetchUsageLimits(config.cache.ttlSeconds)
+  ]);
   const sessionDuration = formatSessionDuration(transcript.sessionStart);
-  const rateLimits = await fetchUsageLimits(config.cache.ttlSeconds);
   const ctx = {
     stdin,
     config,
@@ -818,6 +906,7 @@ async function main() {
   };
   render(ctx, t);
 }
-main().catch(() => {
+main().catch((e) => {
+  debugError("main", e);
   console.log(colorize("⚠️", COLORS.yellow));
 });

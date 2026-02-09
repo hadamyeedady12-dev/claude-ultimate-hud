@@ -1,5 +1,16 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
+import { debugError } from './errors.js';
+import { EXEC_TIMEOUT_MS } from '../constants.js';
+
+function execFileAsync(cmd: string, args: string[], options: Record<string, unknown>): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, options, (error, stdout) => {
+      if (error) reject(error);
+      else resolve(String(stdout));
+    });
+  });
+}
 
 export async function getGitBranch(cwd?: string): Promise<string | undefined> {
   if (!cwd) return undefined;
@@ -14,13 +25,14 @@ export async function getGitBranch(cwd?: string): Promise<string | undefined> {
   }
 
   try {
-    const result = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+    const result = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim();
-    return result || undefined;
-  } catch {
+      timeout: EXEC_TIMEOUT_MS,
+    });
+    return result.trim() || undefined;
+  } catch (e) {
+    debugError('git branch', e);
     return undefined;
   }
 }

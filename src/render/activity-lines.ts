@@ -1,6 +1,14 @@
 import type { RenderContext, ToolEntry, AgentEntry } from '../types.js';
 import { dim, cyan, yellow, green, magenta } from '../utils/colors.js';
 import { truncate, truncatePath } from '../utils/formatters.js';
+import {
+  MAX_RUNNING_TOOLS,
+  MAX_COMPLETED_TOOL_TYPES,
+  MAX_AGENTS_DISPLAY,
+  MAX_COMPLETED_AGENTS,
+  MAX_AGENT_DESC_LENGTH,
+  MAX_TODO_CONTENT_LENGTH,
+} from '../constants.js';
 
 export function renderToolsLine(ctx: RenderContext): string | null {
   const { tools } = ctx.transcript;
@@ -11,7 +19,7 @@ export function renderToolsLine(ctx: RenderContext): string | null {
   const runningTools = tools.filter((t) => t.status === 'running');
   const completedTools = tools.filter((t) => t.status === 'completed' || t.status === 'error');
 
-  for (const tool of runningTools.slice(-2)) {
+  for (const tool of runningTools.slice(-MAX_RUNNING_TOOLS)) {
     const target = tool.target ? truncatePath(tool.target) : '';
     parts.push(`${yellow('◐')} ${cyan(tool.name)}${target ? dim(`: ${target}`) : ''}`);
   }
@@ -24,7 +32,7 @@ export function renderToolsLine(ctx: RenderContext): string | null {
 
   const sortedTools = Array.from(toolCounts.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 4);
+    .slice(0, MAX_COMPLETED_TOOL_TYPES);
 
   for (const [name, count] of sortedTools) {
     parts.push(`${green('✓')} ${name} ${dim(`×${count}`)}`);
@@ -37,9 +45,9 @@ export function renderAgentsLine(ctx: RenderContext): string | null {
   const { agents } = ctx.transcript;
 
   const runningAgents = agents.filter((a) => a.status === 'running');
-  const recentCompleted = agents.filter((a) => a.status === 'completed').slice(-2);
+  const recentCompleted = agents.filter((a) => a.status === 'completed').slice(-MAX_COMPLETED_AGENTS);
 
-  const toShow = [...runningAgents, ...recentCompleted].slice(-3);
+  const toShow = [...runningAgents, ...recentCompleted].slice(-MAX_AGENTS_DISPLAY);
   if (toShow.length === 0) return null;
 
   const lines: string[] = [];
@@ -55,7 +63,7 @@ function formatAgent(agent: AgentEntry): string {
   const statusIcon = agent.status === 'running' ? yellow('◐') : green('✓');
   const type = magenta(agent.type);
   const model = agent.model ? dim(`[${agent.model}]`) : '';
-  const desc = agent.description ? dim(`: ${truncate(agent.description, 40)}`) : '';
+  const desc = agent.description ? dim(`: ${truncate(agent.description, MAX_AGENT_DESC_LENGTH)}`) : '';
   const elapsed = formatElapsed(agent);
 
   return `${statusIcon} ${type}${model ? ` ${model}` : ''}${desc} ${dim(`(${elapsed})`)}`;
@@ -90,7 +98,7 @@ export function renderTodosLine(ctx: RenderContext): string | null {
     return null;
   }
 
-  const content = truncate(inProgress.content, 50);
+  const content = truncate(inProgress.content, MAX_TODO_CONTENT_LENGTH);
   const progress = dim(`(${completed}/${total})`);
 
   return `${yellow('▸')} ${content} ${progress}`;

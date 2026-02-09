@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import type { UsageLimits } from '../types.js';
 import { getCredentials } from './credentials.js';
-
-const API_TIMEOUT_MS = 5000;
+import { debugError } from './errors.js';
+import { API_TIMEOUT_MS } from '../constants.js';
 const CACHE_DIR = path.join(os.homedir(), '.claude');
 const CACHE_FILE = path.join(CACHE_DIR, 'claude-ultimate-hud-cache.json');
 
@@ -70,9 +71,10 @@ export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | n
     saveFileCache(limits);
 
     return limits;
-  } catch {
+  } catch (e) {
     // Clear token on error as well
     token = null;
+    debugError('API fetch', e);
     return null;
   }
 }
@@ -95,7 +97,11 @@ function saveFileCache(data: UsageLimits): void {
     if (!fs.existsSync(CACHE_DIR)) {
       fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
     }
-    // Write cache file with restrictive permissions (owner read/write only)
-    fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }), { mode: 0o600 });
-  } catch {}
+    // Atomic write: write to temp file then rename to prevent corruption on concurrent read/write
+    const tmpFile = CACHE_FILE + '.' + crypto.randomBytes(4).toString('hex') + '.tmp';
+    fs.writeFileSync(tmpFile, JSON.stringify({ data, timestamp: Date.now() }), { mode: 0o600 });
+    fs.renameSync(tmpFile, CACHE_FILE);
+  } catch (e) {
+    debugError('cache write', e);
+  }
 }

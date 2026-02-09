@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
 import * as readline from 'node:readline';
 import type { TranscriptData, ToolEntry, AgentEntry, TodoEntry } from '../types.js';
+import { debugError } from './errors.js';
+import { MAX_TRANSCRIPT_TOOLS, MAX_TRANSCRIPT_AGENTS } from '../constants.js';
 
 interface TranscriptLine {
   timestamp?: string;
@@ -18,6 +20,10 @@ interface ContentBlock {
   is_error?: boolean;
 }
 
+function isTranscriptLine(obj: unknown): obj is TranscriptLine {
+  return typeof obj === 'object' && obj !== null;
+}
+
 export async function parseTranscript(transcriptPath: string): Promise<TranscriptData> {
   const result: TranscriptData = {
     tools: [],
@@ -32,6 +38,8 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   const toolMap = new Map<string, ToolEntry>();
   const agentMap = new Map<string, AgentEntry>();
   let latestTodos: TodoEntry[] = [];
+  let totalLines = 0;
+  let parseErrors = 0;
 
   try {
     const fileStream = fs.createReadStream(transcriptPath);
@@ -42,16 +50,32 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
 
     for await (const line of rl) {
       if (!line.trim()) continue;
+      totalLines++;
 
       try {
-        const entry = JSON.parse(line) as TranscriptLine;
-        processEntry(entry, toolMap, agentMap, latestTodos, result);
-      } catch {}
+        const parsed = JSON.parse(line);
+        if (isTranscriptLine(parsed)) {
+          processEntry(parsed, toolMap, agentMap, latestTodos, result);
+        } else {
+          parseErrors++;
+        }
+      } catch (e) {
+        parseErrors++;
+        debugError('transcript parse', e);
+      }
     }
-  } catch {}
+  } catch (e) {
+    debugError('transcript read', e);
+  }
 
-  result.tools = Array.from(toolMap.values()).slice(-20);
-  result.agents = Array.from(agentMap.values()).slice(-10);
+  if (totalLines > 0 && parseErrors / totalLines > 0.5) {
+    process.stderr.write(
+      `[claude-ultimate-hud] WARNING: ${parseErrors}/${totalLines} transcript lines failed to parse\n`
+    );
+  }
+
+  result.tools = Array.from(toolMap.values()).slice(-MAX_TRANSCRIPT_TOOLS);
+  result.agents = Array.from(agentMap.values()).slice(-MAX_TRANSCRIPT_AGENTS);
   result.todos = latestTodos;
 
   return result;

@@ -39,7 +39,7 @@ export function renderSessionLine(ctx: RenderContext, t: Translations): string {
 
 function buildRateLimitsSection(ctx: RenderContext, t: Translations): string | null {
   const limits = ctx.rateLimits;
-  if (!limits) return colorize('⚠️', COLORS.yellow);
+  if (!limits) return colorize('🔑 ?', COLORS.yellow);
 
   const parts: string[] = [];
 

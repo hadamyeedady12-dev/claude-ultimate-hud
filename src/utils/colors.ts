@@ -44,7 +44,9 @@ export function getColorForPercent(percent: number): string {
   return COLORS.red;
 }
 
-export function renderProgressBar(percent: number, width = 10): string {
+import { PROGRESS_BAR_WIDTH } from '../constants.js';
+
+export function renderProgressBar(percent: number, width = PROGRESS_BAR_WIDTH): string {
   const filled = Math.round((percent / 100) * width);
   const empty = width - filled;
   const color = getColorForPercent(percent);

@@ -1,5 +1,6 @@
-import { execSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import type { Config, Translations } from '../types.js';
+import { EXEC_TIMEOUT_MS } from '../constants.js';
 
 const EN: Translations = {
   labels: {
@@ -29,7 +30,7 @@ const KO: Translations = {
   time: {
     hours: '시간',
     minutes: '분',
-    shortHours: '시간',
+    shortHours: '시',
     shortMinutes: '분',
   },
   errors: {
@@ -37,13 +38,14 @@ const KO: Translations = {
   },
 };
 
-function getMacOSLocale(): string {
-  if (process.platform !== 'darwin') return '';
-  try {
-    return execSync('defaults read -g AppleLocale', { encoding: 'utf-8', timeout: 1000 }).trim();
-  } catch {
-    return '';
-  }
+function getMacOSLocaleAsync(): Promise<string> {
+  if (process.platform !== 'darwin') return Promise.resolve('');
+  return new Promise((resolve) => {
+    execFile('defaults', ['read', '-g', 'AppleLocale'], { encoding: 'utf-8', timeout: EXEC_TIMEOUT_MS }, (error, stdout) => {
+      if (error) resolve('');
+      else resolve(String(stdout).trim());
+    });
+  });
 }
 
 function isValidLangCode(lang: string): boolean {
@@ -53,7 +55,7 @@ function isValidLangCode(lang: string): boolean {
   return !lower.startsWith('c.') && lower !== 'c' && lower !== 'posix';
 }
 
-function detectLanguage(): 'en' | 'ko' {
+async function detectLanguage(): Promise<'en' | 'ko'> {
   // Check environment variables first
   const envLang = process.env.LANG || process.env.LANGUAGE || process.env.LC_ALL || '';
   if (isValidLangCode(envLang)) {
@@ -62,13 +64,13 @@ function detectLanguage(): 'en' | 'ko' {
   }
 
   // Fallback: On macOS, check system locale via AppleLocale
-  const macLocale = getMacOSLocale();
+  const macLocale = await getMacOSLocaleAsync();
   if (macLocale.toLowerCase().startsWith('ko')) return 'ko';
 
   return 'en';
 }
 
-export function getTranslations(config: Config): Translations {
-  const lang = config.language === 'auto' ? detectLanguage() : config.language;
+export async function getTranslations(config: Config): Promise<Translations> {
+  const lang = config.language === 'auto' ? await detectLanguage() : config.language;
   return lang === 'ko' ? KO : EN;
 }
