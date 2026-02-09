@@ -117,6 +117,25 @@ bun install && bun run build
 
 ## 변경 이력
 
+### v1.1.5
+- 🔒 **보안 강화**
+  - Path Traversal 취약점 수정 (`resolve()` + `sep` 접두사 비교)
+  - Keychain/exec 명령에 3초 타임아웃 추가 (무한 블로킹 방지)
+  - 자격 증명 파일 권한 검증 (world-readable 시 경고)
+- 🐛 **버그 수정**
+  - 한국어 `shortHours` 수정: `'시간'` → `'시'` (레이아웃 일관성)
+  - Transcript 파서에 런타임 타입 가드 추가 (unsafe cast 제거)
+  - 파싱 에러 추적: 50% 이상 실패 시 경고 출력
+- ⚡ **성능 개선**
+  - 동기 `execFileSync` → 비동기 `execFile` + `Promise.all` 병렬화
+  - stdin 읽기 5초 타임아웃 추가
+  - 원자적 캐시 파일 쓰기 (임시 파일 + rename)
+- 🛠️ **코드 품질**
+  - 디버그 모드 추가: `CLAUDE_HUD_DEBUG=1`로 상세 에러 출력
+  - 진단용 에러 메시지 (`⚠️ stdin`, `🔑 ?` 등 원인 구분)
+  - 13개 매직 넘버를 `constants.ts`에 JSDoc과 함께 통합
+  - 스크린샷 최적화: 776KB → 241KB (-69%)
+
 ### v1.1.4
 - 🐛 **버그 수정**: macOS에서 `LANG=C.UTF-8`일 때 언어 자동 감지 실패 문제 해결
   - `AppleLocale` 설정을 확인하여 시스템 언어 감지

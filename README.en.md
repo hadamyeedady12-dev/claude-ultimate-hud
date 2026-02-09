@@ -117,6 +117,25 @@ Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## Changelog
 
+### v1.1.5
+- 🔒 **Security**
+  - Fix path traversal vulnerability (`resolve()` + `sep` prefix check)
+  - Add 3s timeout to keychain/exec commands (prevent infinite blocking)
+  - Validate credential file permissions (warn if world-readable)
+- 🐛 **Bug Fixes**
+  - Fix Korean `shortHours`: `'시간'` → `'시'` (layout consistency)
+  - Add runtime type guard for transcript parser (remove unsafe cast)
+  - Track parse errors with 50% threshold warning
+- ⚡ **Performance**
+  - Convert sync `execFileSync` → async `execFile` + `Promise.all` parallelization
+  - Add 5s stdin read timeout
+  - Atomic cache file writes (temp file + rename)
+- 🛠️ **Code Quality**
+  - Add debug mode: `CLAUDE_HUD_DEBUG=1` for detailed error output
+  - Diagnostic error messages (`⚠️ stdin`, `🔑 ?` to distinguish causes)
+  - Consolidate 13 magic numbers into `constants.ts` with JSDoc
+  - Optimize screenshot: 776KB → 241KB (-69%)
+
 ### v1.1.4
 - 🐛 **Bug Fix**: Fix language auto-detection on macOS when `LANG=C.UTF-8`
   - Now checks `AppleLocale` setting for system language detection
