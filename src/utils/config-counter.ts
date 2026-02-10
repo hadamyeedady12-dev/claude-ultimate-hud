@@ -21,13 +21,20 @@ function getMcpServerNames(filePath: string): Set<string> {
   return new Set();
 }
 
-function countMcpServersInFile(filePath: string, excludeFrom?: string): number {
-  const servers = getMcpServerNames(filePath);
-  if (excludeFrom) {
-    const exclude = getMcpServerNames(excludeFrom);
-    for (const name of exclude) servers.delete(name);
-  }
-  return servers.size;
+function getProjectScopedMcpServers(claudeJsonPath: string, cwd: string): Set<string> {
+  const config = readJsonFile(claudeJsonPath);
+  if (!config?.projects || typeof config.projects !== 'object') return new Set();
+  const projects = config.projects as Record<string, Record<string, unknown>>;
+  const projectConfig = projects[cwd];
+  if (!projectConfig?.mcpServers || typeof projectConfig.mcpServers !== 'object') return new Set();
+  return new Set(Object.keys(projectConfig.mcpServers as Record<string, unknown>));
+}
+
+function isChromeExtensionMcpActive(claudeJsonPath: string): boolean {
+  const config = readJsonFile(claudeJsonPath);
+  if (!config) return false;
+  return config.claudeInChromeDefaultEnabled === true &&
+    config.cachedChromeExtensionInstalled === true;
 }
 
 function countHooksInFile(filePath: string): number {
@@ -104,14 +111,31 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
   }
 
   const userSettings = path.join(claudeDir, 'settings.json');
-  mcpCount += countMcpServersInFile(userSettings);
   hooksCount += countHooksInFile(userSettings);
   if (fs.existsSync(userSettings)) {
     countedPaths.add(resolvePath(userSettings));
   }
 
   const userClaudeJson = path.join(homeDir, '.claude.json');
-  mcpCount += countMcpServersInFile(userClaudeJson, userSettings);
+
+  // Collect all unique MCP server names using a Set for deduplication
+  const allMcpServers = new Set<string>();
+
+  // 1. From ~/.claude/settings.json (top-level mcpServers)
+  for (const name of getMcpServerNames(userSettings)) allMcpServers.add(name);
+
+  // 2. From ~/.claude.json (top-level mcpServers)
+  for (const name of getMcpServerNames(userClaudeJson)) allMcpServers.add(name);
+
+  // 3. From ~/.claude.json (project-scoped mcpServers)
+  if (cwd) {
+    for (const name of getProjectScopedMcpServers(userClaudeJson, cwd)) allMcpServers.add(name);
+  }
+
+  // 4. Chrome extension MCP (dynamically injected, not in config files)
+  if (isChromeExtensionMcpActive(userClaudeJson)) {
+    allMcpServers.add('claude-in-chrome');
+  }
 
   if (cwd) {
     // Helper to check and count file if not already counted
@@ -133,23 +157,29 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
       rulesCount += countRulesInDir(projectRulesDir);
     }
 
+    // 5. From {cwd}/.mcp.json
     const projectMcpJson = path.join(cwd, '.mcp.json');
-    if (countFileIfNew(projectMcpJson)) {
-      mcpCount += countMcpServersInFile(projectMcpJson);
+    if (fs.existsSync(projectMcpJson)) {
+      countFileIfNew(projectMcpJson);
+      for (const name of getMcpServerNames(projectMcpJson)) allMcpServers.add(name);
     }
 
+    // 6. From {cwd}/.claude/settings.json
     const projectSettings = path.join(cwd, '.claude', 'settings.json');
     if (countFileIfNew(projectSettings)) {
-      mcpCount += countMcpServersInFile(projectSettings);
+      for (const name of getMcpServerNames(projectSettings)) allMcpServers.add(name);
       hooksCount += countHooksInFile(projectSettings);
     }
 
+    // 7. From {cwd}/.claude/settings.local.json
     const localSettings = path.join(cwd, '.claude', 'settings.local.json');
     if (countFileIfNew(localSettings)) {
-      mcpCount += countMcpServersInFile(localSettings);
+      for (const name of getMcpServerNames(localSettings)) allMcpServers.add(name);
       hooksCount += countHooksInFile(localSettings);
     }
   }
+
+  mcpCount = allMcpServers.size;
 
   return { claudeMdCount, rulesCount, mcpCount, hooksCount };
 }

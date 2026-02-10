@@ -9,21 +9,27 @@ user-invocable: false
 
 Configure the claude-ultimate-hud status line plugin with automatic runtime and platform detection.
 
-## Step 0: Ask User Plan Preference (if $2 not provided)
+## Step 0: Ask User Preferences (if not provided via arguments)
 
-If `$2` (plan) is not provided, use `AskUserQuestion` to ask:
+Use `AskUserQuestion` to ask for both language and plan in a **single call** (up to 2 questions):
 
-**Question - Plan:**
-- header: "플랜"
-- question: "어떤 플랜을 사용하시나요?"
+**Question 1 - Language** (if `$1` not provided):
+- header: "Language"
+- question: "Which language do you prefer for the HUD?"
 - options:
-  - `max200`: Max $200/월 (20x) - 5h + 7d 전체 + 7d 소넷 (Recommended)
-  - `max100`: Max $100/월 (5x) - 5h + 7d 전체 + 7d 소넷
-  - `pro`: Pro - 5h만 표시
+  - `en`: English (Recommended)
+  - `ko`: Korean (한국어)
+  - `auto`: Auto-detect from system locale
 
-Language is always set to `auto` (system language auto-detection).
+**Question 2 - Plan** (if `$2` not provided):
+- header: "Plan"
+- question: "Which subscription plan are you on?"
+- options:
+  - `max200`: Max $200/mo (20x) - 5h + 7d all + 7d Sonnet (Recommended)
+  - `max100`: Max $100/mo (5x) - 5h + 7d all + 7d Sonnet
+  - `pro`: Pro - 5h only
 
-Use the selected plan value for the rest of the setup.
+Use the selected values for the rest of the setup.
 
 ## Arguments (optional, skips interactive selection)
 

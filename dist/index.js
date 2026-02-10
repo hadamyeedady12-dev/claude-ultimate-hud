@@ -297,14 +297,21 @@ function getMcpServerNames(filePath) {
   }
   return new Set;
 }
-function countMcpServersInFile(filePath, excludeFrom) {
-  const servers = getMcpServerNames(filePath);
-  if (excludeFrom) {
-    const exclude = getMcpServerNames(excludeFrom);
-    for (const name of exclude)
-      servers.delete(name);
-  }
-  return servers.size;
+function getProjectScopedMcpServers(claudeJsonPath, cwd) {
+  const config = readJsonFile(claudeJsonPath);
+  if (!config?.projects || typeof config.projects !== "object")
+    return new Set;
+  const projects = config.projects;
+  const projectConfig = projects[cwd];
+  if (!projectConfig?.mcpServers || typeof projectConfig.mcpServers !== "object")
+    return new Set;
+  return new Set(Object.keys(projectConfig.mcpServers));
+}
+function isChromeExtensionMcpActive(claudeJsonPath) {
+  const config = readJsonFile(claudeJsonPath);
+  if (!config)
+    return false;
+  return config.claudeInChromeDefaultEnabled === true && config.cachedChromeExtensionInstalled === true;
 }
 function countHooksInFile(filePath) {
   const config = readJsonFile(filePath);
@@ -370,13 +377,23 @@ async function countConfigs(cwd) {
     countedPaths.add(resolvePath(userRulesDir));
   }
   const userSettings = path3.join(claudeDir, "settings.json");
-  mcpCount += countMcpServersInFile(userSettings);
   hooksCount += countHooksInFile(userSettings);
   if (fs2.existsSync(userSettings)) {
     countedPaths.add(resolvePath(userSettings));
   }
   const userClaudeJson = path3.join(homeDir, ".claude.json");
-  mcpCount += countMcpServersInFile(userClaudeJson, userSettings);
+  const allMcpServers = new Set;
+  for (const name of getMcpServerNames(userSettings))
+    allMcpServers.add(name);
+  for (const name of getMcpServerNames(userClaudeJson))
+    allMcpServers.add(name);
+  if (cwd) {
+    for (const name of getProjectScopedMcpServers(userClaudeJson, cwd))
+      allMcpServers.add(name);
+  }
+  if (isChromeExtensionMcpActive(userClaudeJson)) {
+    allMcpServers.add("claude-in-chrome");
+  }
   if (cwd) {
     const countFileIfNew = (filePath) => {
       if (!fs2.existsSync(filePath))
@@ -400,20 +417,25 @@ async function countConfigs(cwd) {
       rulesCount += countRulesInDir(projectRulesDir);
     }
     const projectMcpJson = path3.join(cwd, ".mcp.json");
-    if (countFileIfNew(projectMcpJson)) {
-      mcpCount += countMcpServersInFile(projectMcpJson);
+    if (fs2.existsSync(projectMcpJson)) {
+      countFileIfNew(projectMcpJson);
+      for (const name of getMcpServerNames(projectMcpJson))
+        allMcpServers.add(name);
     }
     const projectSettings = path3.join(cwd, ".claude", "settings.json");
     if (countFileIfNew(projectSettings)) {
-      mcpCount += countMcpServersInFile(projectSettings);
+      for (const name of getMcpServerNames(projectSettings))
+        allMcpServers.add(name);
       hooksCount += countHooksInFile(projectSettings);
     }
     const localSettings = path3.join(cwd, ".claude", "settings.local.json");
     if (countFileIfNew(localSettings)) {
-      mcpCount += countMcpServersInFile(localSettings);
+      for (const name of getMcpServerNames(localSettings))
+        allMcpServers.add(name);
       hooksCount += countHooksInFile(localSettings);
     }
   }
+  mcpCount = allMcpServers.size;
   return { claudeMdCount, rulesCount, mcpCount, hooksCount };
 }
 
