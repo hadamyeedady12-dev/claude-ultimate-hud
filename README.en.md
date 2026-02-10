@@ -74,7 +74,7 @@ Running the command will show an interactive menu to select your plan:
 | `max100` | Max $100/month (5x) - 5h + 7d all + 7d Sonnet |
 | `pro` | Pro - 5h only |
 
-Language is auto-detected from your system. To change manually, edit `~/.claude/claude-ultimate-hud.local.json` and set `language` to `en` or `ko`.
+Setup will ask for both **language** and **plan** preferences. To change later, edit `~/.claude/claude-ultimate-hud.local.json` and set `language` to `en`, `ko`, or `auto`.
 
 ## Requirements
 
@@ -116,6 +116,14 @@ Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
 Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## Changelog
+
+### v1.1.6
+- 🐛 **MCP Server Count Fix**
+  - Detect project-scoped MCP servers from `.claude.json` (`projects[cwd].mcpServers`)
+  - Detect Chrome extension MCP (`claude-in-chrome`) via config flags
+  - Set-based deduplication for accurate server counts
+- ⚙️ **Setup Improvements**
+  - Add language selection: English / Korean / Auto
 
 ### v1.1.5
 - 🔒 **Security**

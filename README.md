@@ -74,7 +74,7 @@ bun install && bun run build
 | `max100` | Max $100/월 (5x) - 5시간 + 7일 전체 + 7일 소넷 |
 | `pro` | Pro - 5시간만 표시 |
 
-언어는 시스템 언어를 자동 감지합니다. 수동으로 변경하려면 `~/.claude/claude-ultimate-hud.local.json` 파일의 `language` 값을 `en` 또는 `ko`로 수정하세요.
+셋업 시 **언어**와 **플랜**을 선택할 수 있습니다. 나중에 변경하려면 `~/.claude/claude-ultimate-hud.local.json` 파일의 `language` 값을 `en`, `ko`, 또는 `auto`로 수정하세요.
 
 ## 요구사항
 
@@ -116,6 +116,14 @@ bun install && bun run build
 [OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
 ## 변경 이력
+
+### v1.1.6
+- 🐛 **MCP 서버 카운트 수정**
+  - `.claude.json`의 프로젝트 스코프 MCP 서버 감지 (`projects[cwd].mcpServers`)
+  - Chrome 확장 MCP (`claude-in-chrome`) 동적 감지
+  - Set 기반 중복 제거로 정확한 카운트
+- ⚙️ **셋업 개선**
+  - 언어 선택 추가: English / Korean / Auto 중 선택 가능
 
 ### v1.1.5
 - 🔒 **보안 강화**
