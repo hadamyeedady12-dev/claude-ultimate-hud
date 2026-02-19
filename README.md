@@ -22,18 +22,30 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
+### v1.2.0 신규 기능
+- 📊 **정확한 컨텍스트 %**: AUTOCOMPACT_BUFFER 보정 제거로 실제 사용량 표시
+- ⚠️ **컨텍스트 경고**: 80%+ 노랑, 90%+ 빨강 배너 자동 표시
+- 💭 **Thinking 표시**: 모델 사고 중 상태 표시
+- 📈 **호출 카운트**: `T:42 A:5 S:2` (도구/에이전트/스킬 누적)
+- 🔄 **OMC 모드 상태**: ralph/autopilot/ultrawork 활성 시 표시 (OMC 미사용 시 자동 숨김)
+- 🎯 **스킬 추적**: 마지막 실행한 스킬 이름 표시
+
 ### 추가 기능
 - 🌐 **다국어 지원**: 영어/한국어 자동 감지
 
 ## 출력 예시
 
 ```
-🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일: 전체 18% │ 소넷 1%
+🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일: 전체 18% │ 소넷 1%
+🔄 ralph:3/10 │ ⚡ ultrawork │ 💭 thinking │ T:42 A:5 S:2
 📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: 패턴 찾는 중... │ ✓ librarian (2s)
 ▸ 인증 플로우 구현 (2/5)
+⚠️ 컨텍스트 85% - /compact 권장
 ```
+
+> **참고**: OMC(oh-my-claudecode) 미사용 시 OMC 모드 라인은 표시되지 않습니다. 컨텍스트 경고, thinking 표시, 호출 카운트는 모든 사용자에게 동작합니다.
 
 ## 설치
 
@@ -116,6 +128,22 @@ bun install && bun run build
 [OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
 ## 변경 이력
+
+### v1.2.0
+- 📊 **컨텍스트 정확도 개선**
+  - `AUTOCOMPACT_BUFFER` 45000 → 0으로 수정하여 실제 토큰 사용량 표시
+- ⚠️ **컨텍스트 경고 배너**
+  - 80-89%: 노란색 `⚠️ 컨텍스트 85% - /compact 권장`
+  - 90%+: 빨간색 `🔴 컨텍스트 95% - /compact 필요!`
+  - 한국어/영어 번역 지원
+- 🔄 **OMC 모드 상태 표시**
+  - ralph (`🔄 ralph:3/10`), autopilot (`🤖 autopilot:Plan(2/5)`), ultrawork (`⚡ ultrawork`)
+  - 3단계 fallback: session → state dir → .omc root
+  - 2시간 이상 된 stale 파일 자동 무시
+  - OMC 미설치 시 완전 no-op (추가 출력 없음)
+- 💭 **Thinking 표시**: 모델 사고 중일 때 `💭 thinking` 표시
+- 🎯 **스킬 추적**: 마지막 스킬 호출 이름 표시
+- 📈 **호출 카운트**: `T:42 A:5 S:2` (도구/에이전트/스킬 누적 횟수)
 
 ### v1.1.6
 - 🐛 **MCP 서버 카운트 수정**

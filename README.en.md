@@ -22,18 +22,30 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🤖 **Agent Status**: Subagent progress tracking
 - ✅ **Todo Progress**: Current task and completion rate
 
+### New in v1.2.0
+- 📊 **Accurate Context %**: Removed AUTOCOMPACT_BUFFER bias for true usage display
+- ⚠️ **Context Warnings**: Yellow at 80%+, red at 90%+ with actionable banner
+- 💭 **Thinking Indicator**: Shows when model is in thinking mode
+- 📈 **Call Counters**: `T:42 A:5 S:2` (cumulative tool/agent/skill counts)
+- 🔄 **OMC Mode Status**: ralph/autopilot/ultrawork state display (auto-hidden without OMC)
+- 🎯 **Skill Tracking**: Shows last invoked skill name
+
 ### Additional
 - 🌐 **i18n**: English and Korean support (auto-detect)
 
 ## Output Example
 
 ```
-🤖 Opus 4.5 │ ████░░░░░░ 18% │ 37K/200K │ 5h: 12% (3h59m) │ 7d: all 18% │ Sonnet 1%
+🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5h: 12% (3h59m) │ 7d: all 18% │ Sonnet 1%
+🔄 ralph:3/10 │ ⚡ ultrawork │ 💭 thinking │ T:42 A:5 S:2
 📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: Finding patterns... │ ✓ librarian (2s)
 ▸ Implement auth flow (2/5)
+⚠️ Context 85% - consider /compact
 ```
+
+> **Note**: The OMC mode line only appears when oh-my-claudecode is active. Context warnings, thinking indicator, and call counters work for all users.
 
 ## Installation
 
@@ -116,6 +128,22 @@ Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
 Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## Changelog
+
+### v1.2.0
+- 📊 **Context Accuracy**
+  - Fix `AUTOCOMPACT_BUFFER` from 45000 → 0 for accurate token usage display
+- ⚠️ **Context Warning Banner**
+  - 80-89%: Yellow `⚠️ Context 85% - consider /compact`
+  - 90%+: Red `🔴 Context 95% - /compact recommended!`
+  - EN/KO i18n support
+- 🔄 **OMC Mode Status Display**
+  - ralph (`🔄 ralph:3/10`), autopilot (`🤖 autopilot:Plan(2/5)`), ultrawork (`⚡ ultrawork`)
+  - 3-level fallback: session → state dir → .omc root
+  - Auto-ignores stale files (>2 hours)
+  - Complete no-op without OMC (zero extra output)
+- 💭 **Thinking Indicator**: Shows `💭 thinking` during model reasoning
+- 🎯 **Skill Tracking**: Displays last invoked skill name
+- 📈 **Call Counters**: `T:42 A:5 S:2` (cumulative tool/agent/skill counts)
 
 ### v1.1.6
 - 🐛 **MCP Server Count Fix**
