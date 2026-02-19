@@ -79,6 +79,17 @@ export interface TranscriptData {
   tools: ToolEntry[];
   agents: AgentEntry[];
   todos: TodoEntry[];
+  lastSkill?: { name: string; timestamp: Date };
+  isThinking?: boolean;
+  toolCallCount: number;
+  agentCallCount: number;
+  skillCallCount: number;
+}
+
+export interface OmcState {
+  ralph?: { active: boolean; iteration: number; maxIterations: number };
+  ultrawork?: { active: boolean };
+  autopilot?: { active: boolean; phase: string; iteration: number; maxIterations: number };
 }
 
 export interface RenderContext {
@@ -89,6 +100,7 @@ export interface RenderContext {
   gitBranch?: string;
   sessionDuration: string;
   rateLimits: UsageLimits | null;
+  omcState: OmcState;
 }
 
 export interface Translations {
@@ -106,5 +118,9 @@ export interface Translations {
   };
   errors: {
     no_context: string;
+  };
+  contextWarning?: {
+    warning: string;
+    critical: string;
   };
 }

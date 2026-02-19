@@ -2,9 +2,9 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join3, isAbsolute, resolve as resolve2, sep } from "node:path";
+import { join as join4, isAbsolute, resolve as resolve2, sep } from "node:path";
 import { homedir as homedir3 } from "node:os";
-import { existsSync as existsSync4, statSync as statSync2 } from "node:fs";
+import { existsSync as existsSync5, statSync as statSync3 } from "node:fs";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
@@ -16,7 +16,7 @@ var DEFAULT_CONFIG = {
 };
 
 // src/constants.ts
-var AUTOCOMPACT_BUFFER = 45000;
+var AUTOCOMPACT_BUFFER = 0;
 var PROGRESS_BAR_WIDTH = 10;
 var MAX_RUNNING_TOOLS = 2;
 var MAX_COMPLETED_TOOL_TYPES = 4;
@@ -449,7 +449,10 @@ async function parseTranscript(transcriptPath) {
   const result = {
     tools: [],
     agents: [],
-    todos: []
+    todos: [],
+    toolCallCount: 0,
+    agentCallCount: 0,
+    skillCallCount: 0
   };
   if (!transcriptPath || !fs3.existsSync(transcriptPath)) {
     return result;
@@ -502,6 +505,12 @@ function processEntry(entry, toolMap, agentMap, latestTodos, result) {
   if (!content || !Array.isArray(content))
     return;
   for (const block of content) {
+    if (block.type === "thinking") {
+      result.isThinking = true;
+    }
+    if (block.type === "text") {
+      result.isThinking = false;
+    }
     if (block.type === "tool_use" && block.id && block.name) {
       const toolEntry = {
         name: block.name,
@@ -519,6 +528,12 @@ function processEntry(entry, toolMap, agentMap, latestTodos, result) {
           startTime: timestamp
         };
         agentMap.set(block.id, agentEntry);
+        result.agentCallCount++;
+      } else if (block.name === "Skill") {
+        const input = block.input;
+        const skillName = input?.skill ?? "unknown";
+        result.lastSkill = { name: skillName, timestamp };
+        result.skillCallCount++;
       } else if (block.name === "TodoWrite") {
         const input = block.input;
         if (input?.todos && Array.isArray(input.todos)) {
@@ -527,6 +542,7 @@ function processEntry(entry, toolMap, agentMap, latestTodos, result) {
         }
       } else {
         toolMap.set(block.id, toolEntry);
+        result.toolCallCount++;
       }
     }
     if (block.type === "tool_result" && block.tool_use_id) {
@@ -615,6 +631,10 @@ var EN = {
   },
   errors: {
     no_context: "No context data"
+  },
+  contextWarning: {
+    warning: "Context {pct}% - consider /compact",
+    critical: "Context {pct}% - /compact recommended!"
   }
 };
 var KO = {
@@ -632,6 +652,10 @@ var KO = {
   },
   errors: {
     no_context: "컨텍스트 데이터 없음"
+  },
+  contextWarning: {
+    warning: "컨텍스트 {pct}% - /compact 권장",
+    critical: "컨텍스트 {pct}% - /compact 필요!"
   }
 };
 function getMacOSLocaleAsync() {
@@ -667,6 +691,91 @@ async function detectLanguage() {
 async function getTranslations(config) {
   const lang = config.language === "auto" ? await detectLanguage() : config.language;
   return lang === "ko" ? KO : EN;
+}
+
+// src/utils/omc-state.ts
+import { existsSync as existsSync4, statSync as statSync2, readdirSync as readdirSync2, readFileSync as readFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
+var STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
+function readJsonFile2(filePath) {
+  try {
+    if (!existsSync4(filePath))
+      return null;
+    const stat2 = statSync2(filePath);
+    if (!stat2.isFile() || Date.now() - stat2.mtimeMs > STALE_THRESHOLD_MS)
+      return null;
+    return JSON.parse(readFileSync2(filePath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+function findSessionStateDir(omcStateDir) {
+  const sessionsDir = join3(omcStateDir, "sessions");
+  try {
+    if (!existsSync4(sessionsDir))
+      return null;
+    const entries = readdirSync2(sessionsDir, { withFileTypes: true });
+    let latest = null;
+    for (const entry of entries) {
+      if (!entry.isDirectory())
+        continue;
+      try {
+        const mtime = statSync2(join3(sessionsDir, entry.name)).mtimeMs;
+        if (!latest || mtime > latest.mtime) {
+          latest = { name: entry.name, mtime };
+        }
+      } catch {}
+    }
+    return latest ? join3(sessionsDir, latest.name) : null;
+  } catch {
+    return null;
+  }
+}
+function readStateFile(cwd, filename) {
+  const omcStateDir = join3(cwd, ".omc", "state");
+  const sessionDir = findSessionStateDir(omcStateDir);
+  if (sessionDir) {
+    const data2 = readJsonFile2(join3(sessionDir, filename));
+    if (data2)
+      return data2;
+  }
+  const data = readJsonFile2(join3(omcStateDir, filename));
+  if (data)
+    return data;
+  return readJsonFile2(join3(cwd, ".omc", filename));
+}
+async function readOmcState(cwd) {
+  const state = {};
+  if (!cwd)
+    return state;
+  if (!existsSync4(join3(cwd, ".omc")))
+    return state;
+  try {
+    const ralph = readStateFile(cwd, "ralph-state.json");
+    if (ralph?.active) {
+      state.ralph = {
+        active: true,
+        iteration: ralph.iteration ?? 0,
+        maxIterations: ralph.max_iterations ?? 0
+      };
+    }
+    const ultrawork = readStateFile(cwd, "ultrawork-state.json");
+    if (ultrawork?.active) {
+      state.ultrawork = { active: true };
+    }
+    const autopilot = readStateFile(cwd, "autopilot-state.json");
+    if (autopilot?.active) {
+      state.autopilot = {
+        active: true,
+        phase: autopilot.current_phase ?? "",
+        iteration: autopilot.iteration ?? 0,
+        maxIterations: autopilot.max_iterations ?? 0
+      };
+    }
+  } catch (e) {
+    debugError("omc-state read", e);
+  }
+  return state;
 }
 
 // src/render/session-line.ts
@@ -836,14 +945,74 @@ function renderTodosLine(ctx) {
   return `${yellow("▸")} ${content} ${progress}`;
 }
 
+// src/render/omc-line.ts
+function renderOmcLine(ctx) {
+  const parts = [];
+  const omc = ctx.omcState;
+  const t = ctx.transcript;
+  if (omc.ralph?.active) {
+    const iter = omc.ralph.maxIterations > 0 ? `${omc.ralph.iteration}/${omc.ralph.maxIterations}` : `${omc.ralph.iteration}`;
+    parts.push(`${COLORS.cyan}\uD83D\uDD04 ralph:${iter}${RESET}`);
+  }
+  if (omc.autopilot?.active) {
+    const phase = omc.autopilot.phase || "?";
+    const iter = omc.autopilot.maxIterations > 0 ? `(${omc.autopilot.iteration}/${omc.autopilot.maxIterations})` : "";
+    parts.push(`${COLORS.green}\uD83E\uDD16 autopilot:${phase}${iter}${RESET}`);
+  }
+  if (omc.ultrawork?.active) {
+    parts.push(`${COLORS.yellow}⚡ ultrawork${RESET}`);
+  }
+  if (t.isThinking) {
+    parts.push(`${COLORS.magenta}\uD83D\uDCAD thinking${RESET}`);
+  }
+  if (t.lastSkill) {
+    parts.push(`${COLORS.cyan}\uD83C\uDFAF skill:${t.lastSkill.name}${RESET}`);
+  }
+  if (t.toolCallCount > 0 || t.agentCallCount > 0 || t.skillCallCount > 0) {
+    const counts = [
+      `T:${t.toolCallCount}`,
+      `A:${t.agentCallCount}`,
+      `S:${t.skillCallCount}`
+    ].join(" ");
+    parts.push(colorize(counts, COLORS.dim));
+  }
+  if (parts.length === 0)
+    return "";
+  return parts.join(` ${COLORS.dim}│${RESET} `);
+}
+
+// src/render/context-warning.ts
+function renderContextWarning(ctx, t) {
+  const usage = ctx.stdin.context_window.current_usage;
+  if (!usage)
+    return "";
+  const baseTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+  const totalTokens = ctx.stdin.context_window.context_window_size;
+  if (totalTokens <= 0)
+    return "";
+  const currentTokens = baseTokens + AUTOCOMPACT_BUFFER;
+  const percent = Math.min(100, Math.round(currentTokens / totalTokens * 100));
+  if (percent >= 90) {
+    const template = t.contextWarning?.critical ?? "Context {pct}% - /compact recommended!";
+    return `${COLORS.red}\uD83D\uDD34 ${template.replace("{pct}", String(percent))}${RESET}`;
+  }
+  if (percent >= 80) {
+    const template = t.contextWarning?.warning ?? "Context {pct}% - consider /compact";
+    return `${COLORS.yellow}⚠️ ${template.replace("{pct}", String(percent))}${RESET}`;
+  }
+  return "";
+}
+
 // src/render/index.ts
 function render(ctx, t) {
   const lines = [
     renderSessionLine(ctx, t),
+    renderOmcLine(ctx),
     renderProjectLine(ctx),
     renderToolsLine(ctx),
     renderAgentsLine(ctx),
-    renderTodosLine(ctx)
+    renderTodosLine(ctx),
+    renderContextWarning(ctx, t)
   ].filter(Boolean);
   for (const line of lines) {
     console.log(`${RESET}${line.replace(/ /g, " ")}`);
@@ -851,12 +1020,12 @@ function render(ctx, t) {
 }
 
 // src/index.ts
-var CONFIG_PATH = join3(homedir3(), ".claude", "claude-ultimate-hud.local.json");
+var CONFIG_PATH = join4(homedir3(), ".claude", "claude-ultimate-hud.local.json");
 function isValidDirectory(p) {
   if (!p || !isAbsolute(p))
     return false;
   try {
-    return existsSync4(p) && statSync2(p).isDirectory();
+    return existsSync5(p) && statSync3(p).isDirectory();
   } catch {
     return false;
   }
@@ -866,10 +1035,10 @@ function isValidTranscriptPath(p) {
     return true;
   if (!isAbsolute(p))
     return false;
-  const claudeDir = join3(homedir3(), ".claude");
+  const claudeDir = join4(homedir3(), ".claude");
   try {
     const resolved = resolve2(p);
-    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync4(resolved);
+    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync5(resolved);
   } catch {
     return false;
   }
@@ -910,11 +1079,12 @@ async function main() {
   const transcriptPath = stdin.transcript_path ?? "";
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : "";
   const validCwd = isValidDirectory(stdin.cwd ?? "") ? stdin.cwd : undefined;
-  const [transcript, configCounts, gitBranch, rateLimits] = await Promise.all([
+  const [transcript, configCounts, gitBranch, rateLimits, omcState] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitBranch(validCwd),
-    fetchUsageLimits(config.cache.ttlSeconds)
+    fetchUsageLimits(config.cache.ttlSeconds),
+    readOmcState(validCwd)
   ]);
   const sessionDuration = formatSessionDuration(transcript.sessionStart);
   const ctx = {
@@ -924,7 +1094,8 @@ async function main() {
     configCounts,
     gitBranch,
     sessionDuration,
-    rateLimits
+    rateLimits,
+    omcState
   };
   render(ctx, t);
 }

@@ -14,6 +14,7 @@ import { countConfigs } from './utils/config-counter.js';
 import { parseTranscript } from './utils/transcript.js';
 import { getGitBranch } from './utils/git.js';
 import { getTranslations } from './utils/i18n.js';
+import { readOmcState } from './utils/omc-state.js';
 import { render } from './render/index.js';
 import { debugError } from './utils/errors.js';
 import { STDIN_TIMEOUT_MS } from './constants.js';
@@ -88,11 +89,12 @@ async function main(): Promise<void> {
   const validCwd = isValidDirectory(stdin.cwd ?? '') ? stdin.cwd : undefined;
 
   // Phase 2: Run all independent I/O operations in parallel
-  const [transcript, configCounts, gitBranch, rateLimits] = await Promise.all([
+  const [transcript, configCounts, gitBranch, rateLimits, omcState] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitBranch(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
+    readOmcState(validCwd),
   ]);
 
   const sessionDuration = formatSessionDuration(transcript.sessionStart);
@@ -105,6 +107,7 @@ async function main(): Promise<void> {
     gitBranch,
     sessionDuration,
     rateLimits,
+    omcState,
   };
 
   render(ctx, t);

@@ -1,5 +1,5 @@
 /** Token buffer added to current usage to account for autocompact overhead */
-export const AUTOCOMPACT_BUFFER = 45000;
+export const AUTOCOMPACT_BUFFER = 0;
 
 /** Width of the progress bar in terminal characters */
 export const PROGRESS_BAR_WIDTH = 10;

@@ -29,6 +29,9 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
     tools: [],
     agents: [],
     todos: [],
+    toolCallCount: 0,
+    agentCallCount: 0,
+    skillCallCount: 0,
   };
 
   if (!transcriptPath || !fs.existsSync(transcriptPath)) {
@@ -98,6 +101,14 @@ function processEntry(
   if (!content || !Array.isArray(content)) return;
 
   for (const block of content) {
+    if (block.type === 'thinking') {
+      result.isThinking = true;
+    }
+
+    if (block.type === 'text') {
+      result.isThinking = false;
+    }
+
     if (block.type === 'tool_use' && block.id && block.name) {
       const toolEntry: ToolEntry = {
         name: block.name,
@@ -116,6 +127,12 @@ function processEntry(
           startTime: timestamp,
         };
         agentMap.set(block.id, agentEntry);
+        result.agentCallCount++;
+      } else if (block.name === 'Skill') {
+        const input = block.input as Record<string, unknown>;
+        const skillName = (input?.skill as string) ?? 'unknown';
+        result.lastSkill = { name: skillName, timestamp };
+        result.skillCallCount++;
       } else if (block.name === 'TodoWrite') {
         const input = block.input as { todos?: TodoEntry[] };
         if (input?.todos && Array.isArray(input.todos)) {
@@ -124,6 +141,7 @@ function processEntry(
         }
       } else {
         toolMap.set(block.id, toolEntry);
+        result.toolCallCount++;
       }
     }
 

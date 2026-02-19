@@ -18,6 +18,10 @@ const EN: Translations = {
   errors: {
     no_context: 'No context data',
   },
+  contextWarning: {
+    warning: 'Context {pct}% - consider /compact',
+    critical: 'Context {pct}% - /compact recommended!',
+  },
 };
 
 const KO: Translations = {
@@ -35,6 +39,10 @@ const KO: Translations = {
   },
   errors: {
     no_context: '컨텍스트 데이터 없음',
+  },
+  contextWarning: {
+    warning: '컨텍스트 {pct}% - /compact 권장',
+    critical: '컨텍스트 {pct}% - /compact 필요!',
   },
 };
 
