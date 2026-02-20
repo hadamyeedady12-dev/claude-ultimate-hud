@@ -22,13 +22,12 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
-### v1.2.0 신규 기능
-- 📊 **정확한 컨텍스트 %**: AUTOCOMPACT_BUFFER 보정 제거로 실제 사용량 표시
-- ⚠️ **컨텍스트 경고**: 80%+ 노랑, 90%+ 빨강 배너 자동 표시
-- 💭 **Thinking 표시**: 모델 사고 중 상태 표시
-- 📈 **호출 카운트**: `T:42 A:5 S:2` (도구/에이전트/스킬 누적)
-- 🔄 **OMC 모드 상태**: ralph/autopilot/ultrawork 활성 시 표시 (OMC 미사용 시 자동 숨김)
-- 🎯 **스킬 추적**: 마지막 실행한 스킬 이름 표시
+### v1.3.0 신규 기능
+- ⚡ **Transcript 증분 파싱**: 파일 캐시 기반 증분 읽기로 세션이 길어져도 일정한 HUD 속도
+- 🚀 **API 캐시 TTL 5배 증가**: 60초 → 300초로 API 블로킹 빈도 대폭 감소
+- 🏗️ **pre-built JS 사용**: statusLine이 `dist/index.js`를 직접 실행하여 TS 컴파일 생략
+- 🌐 **i18n 확장**: TODO 완료 메시지, Thinking 상태 한국어/영어 번역 지원
+- 🐛 **변수 충돌 수정**: `omc-line.ts`의 `t` 변수 shadowing 버그 수정
 
 ### 추가 기능
 - 🌐 **다국어 지원**: 영어/한국어 자동 감지
@@ -128,6 +127,23 @@ bun install && bun run build
 [OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
 ## 변경 이력
+
+### v1.3.0
+- ⚡ **Transcript 증분 파싱**
+  - 파일 캐시 기반으로 이전 파싱 위치를 기억하고 새 내용만 읽음
+  - 파일 크기 변경 없으면 캐시에서 즉시 반환 (O(1))
+  - 세션이 길어져도 일정한 HUD 갱신 속도 유지
+- 🚀 **API 캐시 TTL 5배 증가**
+  - 기본 캐시 TTL 60초 → 300초
+  - Rate limit API 호출로 인한 블로킹 빈도 대폭 감소
+- 🏗️ **statusLine 최적화**
+  - `src/index.ts` (TS 컴파일 필요) → `dist/index.js` (pre-built) 직접 실행
+- 🌐 **i18n 확장**
+  - TODO 완료 메시지 번역 (`All todos complete` / `모든 할 일 완료`)
+  - Thinking 상태 번역 (`thinking` / `사고 중`)
+  - `renderTodosLine`, `renderOmcLine`에 Translations 파라미터 추가
+- 🐛 **변수 충돌 수정**
+  - `omc-line.ts`에서 `t: Translations` 파라미터와 `const t = ctx.transcript` 변수명 충돌 해결
 
 ### v1.2.0
 - 📊 **컨텍스트 정확도 개선**

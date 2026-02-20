@@ -22,6 +22,12 @@ const EN: Translations = {
     warning: 'Context {pct}% - consider /compact',
     critical: 'Context {pct}% - /compact recommended!',
   },
+  todos: {
+    allComplete: 'All todos complete',
+  },
+  omc: {
+    thinking: 'thinking',
+  },
 };
 
 const KO: Translations = {
@@ -43,6 +49,12 @@ const KO: Translations = {
   contextWarning: {
     warning: '컨텍스트 {pct}% - /compact 권장',
     critical: '컨텍스트 {pct}% - /compact 필요!',
+  },
+  todos: {
+    allComplete: '모든 할 일 완료',
+  },
+  omc: {
+    thinking: '사고 중',
   },
 };
 

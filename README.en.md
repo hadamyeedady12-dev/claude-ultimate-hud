@@ -22,13 +22,12 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🤖 **Agent Status**: Subagent progress tracking
 - ✅ **Todo Progress**: Current task and completion rate
 
-### New in v1.2.0
-- 📊 **Accurate Context %**: Removed AUTOCOMPACT_BUFFER bias for true usage display
-- ⚠️ **Context Warnings**: Yellow at 80%+, red at 90%+ with actionable banner
-- 💭 **Thinking Indicator**: Shows when model is in thinking mode
-- 📈 **Call Counters**: `T:42 A:5 S:2` (cumulative tool/agent/skill counts)
-- 🔄 **OMC Mode Status**: ralph/autopilot/ultrawork state display (auto-hidden without OMC)
-- 🎯 **Skill Tracking**: Shows last invoked skill name
+### New in v1.3.0
+- ⚡ **Incremental Transcript Parsing**: File-cache based incremental reading for consistent HUD speed regardless of session length
+- 🚀 **5x API Cache TTL**: 60s → 300s, significantly reducing API blocking frequency
+- 🏗️ **Pre-built JS**: statusLine runs `dist/index.js` directly, skipping TS compilation
+- 🌐 **i18n Expansion**: Todo completion and Thinking state messages now translated (EN/KO)
+- 🐛 **Variable Shadowing Fix**: Fix `t` variable collision in `omc-line.ts`
 
 ### Additional
 - 🌐 **i18n**: English and Korean support (auto-detect)
@@ -128,6 +127,23 @@ Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
 Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## Changelog
+
+### v1.3.0
+- ⚡ **Incremental Transcript Parsing**
+  - File-cache based: remembers last parse position and only reads new content
+  - Returns instantly from cache when file size is unchanged (O(1))
+  - Consistent HUD refresh speed regardless of session length
+- 🚀 **5x API Cache TTL Increase**
+  - Default cache TTL: 60s → 300s
+  - Significantly reduces blocking from rate limit API calls
+- 🏗️ **statusLine Optimization**
+  - Runs pre-built `dist/index.js` directly instead of compiling `src/index.ts`
+- 🌐 **i18n Expansion**
+  - Todo completion message translation (`All todos complete` / `모든 할 일 완료`)
+  - Thinking state translation (`thinking` / `사고 중`)
+  - Added Translations parameter to `renderTodosLine` and `renderOmcLine`
+- 🐛 **Variable Shadowing Fix**
+  - Resolved `t: Translations` parameter collision with `const t = ctx.transcript` in `omc-line.ts`
 
 ### v1.2.0
 - 📊 **Context Accuracy**

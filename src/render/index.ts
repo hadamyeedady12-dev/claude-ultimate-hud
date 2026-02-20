@@ -9,11 +9,11 @@ import { renderContextWarning } from './context-warning.js';
 export function render(ctx: RenderContext, t: Translations): void {
   const lines = [
     renderSessionLine(ctx, t),
-    renderOmcLine(ctx),
+    renderOmcLine(ctx, t),
     renderProjectLine(ctx),
     renderToolsLine(ctx),
     renderAgentsLine(ctx),
-    renderTodosLine(ctx),
+    renderTodosLine(ctx, t),
     renderContextWarning(ctx, t),
   ].filter(Boolean);
 

@@ -1,4 +1,4 @@
-import type { RenderContext, ToolEntry, AgentEntry } from '../types.js';
+import type { RenderContext, ToolEntry, AgentEntry, Translations } from '../types.js';
 import { dim, cyan, yellow, green, magenta } from '../utils/colors.js';
 import { truncate, truncatePath } from '../utils/formatters.js';
 import {
@@ -83,17 +83,17 @@ function formatElapsed(agent: AgentEntry): string {
   return `${mins}m${secs}s`;
 }
 
-export function renderTodosLine(ctx: RenderContext): string | null {
+export function renderTodosLine(ctx: RenderContext, t: Translations): string | null {
   const { todos } = ctx.transcript;
   if (!todos || todos.length === 0) return null;
 
-  const inProgress = todos.find((t) => t.status === 'in_progress');
-  const completed = todos.filter((t) => t.status === 'completed').length;
+  const inProgress = todos.find((td) => td.status === 'in_progress');
+  const completed = todos.filter((td) => td.status === 'completed').length;
   const total = todos.length;
 
   if (!inProgress) {
     if (completed === total && total > 0) {
-      return `${green('✓')} All todos complete ${dim(`(${completed}/${total})`)}`;
+      return `${green('✓')} ${t.todos.allComplete} ${dim(`(${completed}/${total})`)}`;
     }
     return null;
   }

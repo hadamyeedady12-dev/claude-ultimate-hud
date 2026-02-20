@@ -29,7 +29,7 @@ export const DEFAULT_CONFIG: Config = {
   language: 'ko',
   plan: 'max200',
   cache: {
-    ttlSeconds: 60,
+    ttlSeconds: 300,
   },
 };
 
@@ -122,5 +122,11 @@ export interface Translations {
   contextWarning?: {
     warning: string;
     critical: string;
+  };
+  todos: {
+    allComplete: string;
+  };
+  omc: {
+    thinking: string;
   };
 }

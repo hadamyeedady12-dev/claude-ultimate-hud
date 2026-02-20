@@ -1,10 +1,10 @@
-import type { RenderContext } from '../types.js';
+import type { RenderContext, Translations } from '../types.js';
 import { COLORS, RESET, colorize } from '../utils/colors.js';
 
-export function renderOmcLine(ctx: RenderContext): string {
+export function renderOmcLine(ctx: RenderContext, t: Translations): string {
   const parts: string[] = [];
   const omc = ctx.omcState;
-  const t = ctx.transcript;
+  const tr = ctx.transcript;
 
   // OMC mode states (only visible when active)
   if (omc.ralph?.active) {
@@ -27,21 +27,21 @@ export function renderOmcLine(ctx: RenderContext): string {
   }
 
   // Thinking state (universal - works without OMC)
-  if (t.isThinking) {
-    parts.push(`${COLORS.magenta}\u{1F4AD} thinking${RESET}`);
+  if (tr.isThinking) {
+    parts.push(`${COLORS.magenta}\u{1F4AD} ${t.omc.thinking}${RESET}`);
   }
 
   // Last skill invoked
-  if (t.lastSkill) {
-    parts.push(`${COLORS.cyan}\u{1F3AF} skill:${t.lastSkill.name}${RESET}`);
+  if (tr.lastSkill) {
+    parts.push(`${COLORS.cyan}\u{1F3AF} skill:${tr.lastSkill.name}${RESET}`);
   }
 
   // Call counts (universal - always shows if any calls exist)
-  if (t.toolCallCount > 0 || t.agentCallCount > 0 || t.skillCallCount > 0) {
+  if (tr.toolCallCount > 0 || tr.agentCallCount > 0 || tr.skillCallCount > 0) {
     const counts = [
-      `T:${t.toolCallCount}`,
-      `A:${t.agentCallCount}`,
-      `S:${t.skillCallCount}`,
+      `T:${tr.toolCallCount}`,
+      `A:${tr.agentCallCount}`,
+      `S:${tr.skillCallCount}`,
     ].join(' ');
     parts.push(colorize(counts, COLORS.dim));
   }

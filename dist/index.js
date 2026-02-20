@@ -2,16 +2,16 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join4, isAbsolute, resolve as resolve2, sep } from "node:path";
-import { homedir as homedir3 } from "node:os";
-import { existsSync as existsSync5, statSync as statSync3 } from "node:fs";
+import { join as join5, isAbsolute, resolve as resolve2, sep } from "node:path";
+import { homedir as homedir4 } from "node:os";
+import { existsSync as existsSync5, statSync as statSync4 } from "node:fs";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
   language: "ko",
   plan: "max200",
   cache: {
-    ttlSeconds: 60
+    ttlSeconds: 300
   }
 };
 
@@ -442,8 +442,86 @@ async function countConfigs(cwd) {
 // src/utils/transcript.ts
 import * as fs3 from "node:fs";
 import * as readline from "node:readline";
+import * as path4 from "node:path";
+import * as os3 from "node:os";
+var TRANSCRIPT_CACHE_FILE = path4.join(os3.homedir(), ".claude", "claude-ultimate-hud-transcript-cache.json");
 function isTranscriptLine(obj) {
   return typeof obj === "object" && obj !== null;
+}
+function serializeToolEntry(entry) {
+  return {
+    name: entry.name,
+    target: entry.target,
+    status: entry.status,
+    startTime: entry.startTime.toISOString(),
+    endTime: entry.endTime?.toISOString()
+  };
+}
+function deserializeToolEntry(entry) {
+  return {
+    name: entry.name,
+    target: entry.target,
+    status: entry.status,
+    startTime: new Date(entry.startTime),
+    endTime: entry.endTime ? new Date(entry.endTime) : undefined
+  };
+}
+function serializeAgentEntry(entry) {
+  return {
+    type: entry.type,
+    model: entry.model,
+    description: entry.description,
+    status: entry.status,
+    startTime: entry.startTime.toISOString(),
+    endTime: entry.endTime?.toISOString()
+  };
+}
+function deserializeAgentEntry(entry) {
+  return {
+    type: entry.type,
+    model: entry.model,
+    description: entry.description,
+    status: entry.status,
+    startTime: new Date(entry.startTime),
+    endTime: entry.endTime ? new Date(entry.endTime) : undefined
+  };
+}
+function loadTranscriptCache(filePath, currentFileSize) {
+  try {
+    if (!fs3.existsSync(TRANSCRIPT_CACHE_FILE))
+      return null;
+    const content = JSON.parse(fs3.readFileSync(TRANSCRIPT_CACHE_FILE, "utf-8"));
+    if (content.filePath === filePath && content.fileSize <= currentFileSize) {
+      return content;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+function saveTranscriptCache(filePath, fileSize, toolMap, agentMap, todos, result) {
+  try {
+    const toolEntries = Array.from(toolMap.entries()).slice(-(MAX_TRANSCRIPT_TOOLS * 2));
+    const agentEntries = Array.from(agentMap.entries()).slice(-(MAX_TRANSCRIPT_AGENTS * 2));
+    const cache = {
+      filePath,
+      fileSize,
+      data: {
+        toolCallCount: result.toolCallCount,
+        agentCallCount: result.agentCallCount,
+        skillCallCount: result.skillCallCount,
+        sessionStart: result.sessionStart?.toISOString(),
+        isThinking: result.isThinking,
+        lastSkill: result.lastSkill ? { name: result.lastSkill.name, timestamp: result.lastSkill.timestamp.toISOString() } : undefined,
+        tools: toolEntries.map(([id, entry]) => [id, serializeToolEntry(entry)]),
+        agents: agentEntries.map(([id, entry]) => [id, serializeAgentEntry(entry)]),
+        todos
+      }
+    };
+    fs3.writeFileSync(TRANSCRIPT_CACHE_FILE, JSON.stringify(cache), { mode: 384 });
+  } catch (e) {
+    debugError("transcript cache write", e);
+  }
 }
 async function parseTranscript(transcriptPath) {
   const result = {
@@ -457,13 +535,42 @@ async function parseTranscript(transcriptPath) {
   if (!transcriptPath || !fs3.existsSync(transcriptPath)) {
     return result;
   }
+  const fileStat = fs3.statSync(transcriptPath);
+  const fileSize = fileStat.size;
+  const cache = loadTranscriptCache(transcriptPath, fileSize);
   const toolMap = new Map;
   const agentMap = new Map;
   let latestTodos = [];
-  let totalLines = 0;
-  let parseErrors = 0;
+  let startOffset = 0;
+  if (cache) {
+    result.toolCallCount = cache.data.toolCallCount;
+    result.agentCallCount = cache.data.agentCallCount;
+    result.skillCallCount = cache.data.skillCallCount;
+    result.sessionStart = cache.data.sessionStart ? new Date(cache.data.sessionStart) : undefined;
+    result.isThinking = cache.data.isThinking;
+    if (cache.data.lastSkill) {
+      result.lastSkill = {
+        name: cache.data.lastSkill.name,
+        timestamp: new Date(cache.data.lastSkill.timestamp)
+      };
+    }
+    for (const [id, entry] of cache.data.tools) {
+      toolMap.set(id, deserializeToolEntry(entry));
+    }
+    for (const [id, entry] of cache.data.agents) {
+      agentMap.set(id, deserializeAgentEntry(entry));
+    }
+    latestTodos = cache.data.todos;
+    startOffset = cache.fileSize;
+    if (fileSize === cache.fileSize) {
+      result.tools = Array.from(toolMap.values()).slice(-MAX_TRANSCRIPT_TOOLS);
+      result.agents = Array.from(agentMap.values()).slice(-MAX_TRANSCRIPT_AGENTS);
+      result.todos = latestTodos;
+      return result;
+    }
+  }
   try {
-    const fileStream = fs3.createReadStream(transcriptPath);
+    const fileStream = fs3.createReadStream(transcriptPath, { start: startOffset });
     const rl = readline.createInterface({
       input: fileStream,
       crlfDelay: Infinity
@@ -471,29 +578,20 @@ async function parseTranscript(transcriptPath) {
     for await (const line of rl) {
       if (!line.trim())
         continue;
-      totalLines++;
       try {
         const parsed = JSON.parse(line);
         if (isTranscriptLine(parsed)) {
           processEntry(parsed, toolMap, agentMap, latestTodos, result);
-        } else {
-          parseErrors++;
         }
-      } catch (e) {
-        parseErrors++;
-        debugError("transcript parse", e);
-      }
+      } catch {}
     }
   } catch (e) {
     debugError("transcript read", e);
   }
-  if (totalLines > 0 && parseErrors / totalLines > 0.5) {
-    process.stderr.write(`[claude-ultimate-hud] WARNING: ${parseErrors}/${totalLines} transcript lines failed to parse
-`);
-  }
   result.tools = Array.from(toolMap.values()).slice(-MAX_TRANSCRIPT_TOOLS);
   result.agents = Array.from(agentMap.values()).slice(-MAX_TRANSCRIPT_AGENTS);
   result.todos = latestTodos;
+  saveTranscriptCache(transcriptPath, fileSize, toolMap, agentMap, latestTodos, result);
   return result;
 }
 function processEntry(entry, toolMap, agentMap, latestTodos, result) {
@@ -580,7 +678,7 @@ function extractTarget(toolName, input) {
 
 // src/utils/git.ts
 import { execFile as execFile2 } from "node:child_process";
-import { existsSync as existsSync3, statSync } from "node:fs";
+import { existsSync as existsSync3, statSync as statSync2 } from "node:fs";
 function execFileAsync2(cmd, args, options) {
   return new Promise((resolve2, reject) => {
     execFile2(cmd, args, options, (error, stdout) => {
@@ -595,7 +693,7 @@ async function getGitBranch(cwd) {
   if (!cwd)
     return;
   try {
-    if (!existsSync3(cwd) || !statSync(cwd).isDirectory()) {
+    if (!existsSync3(cwd) || !statSync2(cwd).isDirectory()) {
       return;
     }
   } catch {
@@ -635,6 +733,12 @@ var EN = {
   contextWarning: {
     warning: "Context {pct}% - consider /compact",
     critical: "Context {pct}% - /compact recommended!"
+  },
+  todos: {
+    allComplete: "All todos complete"
+  },
+  omc: {
+    thinking: "thinking"
   }
 };
 var KO = {
@@ -656,6 +760,12 @@ var KO = {
   contextWarning: {
     warning: "컨텍스트 {pct}% - /compact 권장",
     critical: "컨텍스트 {pct}% - /compact 필요!"
+  },
+  todos: {
+    allComplete: "모든 할 일 완료"
+  },
+  omc: {
+    thinking: "사고 중"
   }
 };
 function getMacOSLocaleAsync() {
@@ -694,23 +804,23 @@ async function getTranslations(config) {
 }
 
 // src/utils/omc-state.ts
-import { existsSync as existsSync4, statSync as statSync2, readdirSync as readdirSync2, readFileSync as readFileSync2 } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync4, statSync as statSync3, readdirSync as readdirSync2, readFileSync as readFileSync3 } from "node:fs";
+import { join as join4 } from "node:path";
 var STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 function readJsonFile2(filePath) {
   try {
     if (!existsSync4(filePath))
       return null;
-    const stat2 = statSync2(filePath);
+    const stat2 = statSync3(filePath);
     if (!stat2.isFile() || Date.now() - stat2.mtimeMs > STALE_THRESHOLD_MS)
       return null;
-    return JSON.parse(readFileSync2(filePath, "utf-8"));
+    return JSON.parse(readFileSync3(filePath, "utf-8"));
   } catch {
     return null;
   }
 }
 function findSessionStateDir(omcStateDir) {
-  const sessionsDir = join3(omcStateDir, "sessions");
+  const sessionsDir = join4(omcStateDir, "sessions");
   try {
     if (!existsSync4(sessionsDir))
       return null;
@@ -720,35 +830,35 @@ function findSessionStateDir(omcStateDir) {
       if (!entry.isDirectory())
         continue;
       try {
-        const mtime = statSync2(join3(sessionsDir, entry.name)).mtimeMs;
+        const mtime = statSync3(join4(sessionsDir, entry.name)).mtimeMs;
         if (!latest || mtime > latest.mtime) {
           latest = { name: entry.name, mtime };
         }
       } catch {}
     }
-    return latest ? join3(sessionsDir, latest.name) : null;
+    return latest ? join4(sessionsDir, latest.name) : null;
   } catch {
     return null;
   }
 }
 function readStateFile(cwd, filename) {
-  const omcStateDir = join3(cwd, ".omc", "state");
+  const omcStateDir = join4(cwd, ".omc", "state");
   const sessionDir = findSessionStateDir(omcStateDir);
   if (sessionDir) {
-    const data2 = readJsonFile2(join3(sessionDir, filename));
+    const data2 = readJsonFile2(join4(sessionDir, filename));
     if (data2)
       return data2;
   }
-  const data = readJsonFile2(join3(omcStateDir, filename));
+  const data = readJsonFile2(join4(omcStateDir, filename));
   if (data)
     return data;
-  return readJsonFile2(join3(cwd, ".omc", filename));
+  return readJsonFile2(join4(cwd, ".omc", filename));
 }
 async function readOmcState(cwd) {
   const state = {};
   if (!cwd)
     return state;
-  if (!existsSync4(join3(cwd, ".omc")))
+  if (!existsSync4(join4(cwd, ".omc")))
     return state;
   try {
     const ralph = readStateFile(cwd, "ralph-state.json");
@@ -839,12 +949,12 @@ function buildRateLimitsSection(ctx, t) {
 }
 
 // src/render/project-line.ts
-import path4 from "node:path";
+import path5 from "node:path";
 var SEP2 = ` ${COLORS.dim}│${RESET} `;
 function renderProjectLine(ctx) {
   const parts = [];
   if (ctx.stdin.cwd) {
-    const projectName = path4.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
+    const projectName = path5.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
     let projectPart = `\uD83D\uDCC1 ${yellow(projectName)}`;
     if (ctx.gitBranch) {
       projectPart += ` ${magenta("git:(")}${cyan(ctx.gitBranch)}${magenta(")")}`;
@@ -927,16 +1037,16 @@ function formatElapsed(agent) {
   const secs = Math.round(ms % 60000 / 1000);
   return `${mins}m${secs}s`;
 }
-function renderTodosLine(ctx) {
+function renderTodosLine(ctx, t) {
   const { todos } = ctx.transcript;
   if (!todos || todos.length === 0)
     return null;
-  const inProgress = todos.find((t) => t.status === "in_progress");
-  const completed = todos.filter((t) => t.status === "completed").length;
+  const inProgress = todos.find((td) => td.status === "in_progress");
+  const completed = todos.filter((td) => td.status === "completed").length;
   const total = todos.length;
   if (!inProgress) {
     if (completed === total && total > 0) {
-      return `${green("✓")} All todos complete ${dim(`(${completed}/${total})`)}`;
+      return `${green("✓")} ${t.todos.allComplete} ${dim(`(${completed}/${total})`)}`;
     }
     return null;
   }
@@ -946,10 +1056,10 @@ function renderTodosLine(ctx) {
 }
 
 // src/render/omc-line.ts
-function renderOmcLine(ctx) {
+function renderOmcLine(ctx, t) {
   const parts = [];
   const omc = ctx.omcState;
-  const t = ctx.transcript;
+  const tr = ctx.transcript;
   if (omc.ralph?.active) {
     const iter = omc.ralph.maxIterations > 0 ? `${omc.ralph.iteration}/${omc.ralph.maxIterations}` : `${omc.ralph.iteration}`;
     parts.push(`${COLORS.cyan}\uD83D\uDD04 ralph:${iter}${RESET}`);
@@ -962,17 +1072,17 @@ function renderOmcLine(ctx) {
   if (omc.ultrawork?.active) {
     parts.push(`${COLORS.yellow}⚡ ultrawork${RESET}`);
   }
-  if (t.isThinking) {
-    parts.push(`${COLORS.magenta}\uD83D\uDCAD thinking${RESET}`);
+  if (tr.isThinking) {
+    parts.push(`${COLORS.magenta}\uD83D\uDCAD ${t.omc.thinking}${RESET}`);
   }
-  if (t.lastSkill) {
-    parts.push(`${COLORS.cyan}\uD83C\uDFAF skill:${t.lastSkill.name}${RESET}`);
+  if (tr.lastSkill) {
+    parts.push(`${COLORS.cyan}\uD83C\uDFAF skill:${tr.lastSkill.name}${RESET}`);
   }
-  if (t.toolCallCount > 0 || t.agentCallCount > 0 || t.skillCallCount > 0) {
+  if (tr.toolCallCount > 0 || tr.agentCallCount > 0 || tr.skillCallCount > 0) {
     const counts = [
-      `T:${t.toolCallCount}`,
-      `A:${t.agentCallCount}`,
-      `S:${t.skillCallCount}`
+      `T:${tr.toolCallCount}`,
+      `A:${tr.agentCallCount}`,
+      `S:${tr.skillCallCount}`
     ].join(" ");
     parts.push(colorize(counts, COLORS.dim));
   }
@@ -1007,11 +1117,11 @@ function renderContextWarning(ctx, t) {
 function render(ctx, t) {
   const lines = [
     renderSessionLine(ctx, t),
-    renderOmcLine(ctx),
+    renderOmcLine(ctx, t),
     renderProjectLine(ctx),
     renderToolsLine(ctx),
     renderAgentsLine(ctx),
-    renderTodosLine(ctx),
+    renderTodosLine(ctx, t),
     renderContextWarning(ctx, t)
   ].filter(Boolean);
   for (const line of lines) {
@@ -1020,12 +1130,12 @@ function render(ctx, t) {
 }
 
 // src/index.ts
-var CONFIG_PATH = join4(homedir3(), ".claude", "claude-ultimate-hud.local.json");
+var CONFIG_PATH = join5(homedir4(), ".claude", "claude-ultimate-hud.local.json");
 function isValidDirectory(p) {
   if (!p || !isAbsolute(p))
     return false;
   try {
-    return existsSync5(p) && statSync3(p).isDirectory();
+    return existsSync5(p) && statSync4(p).isDirectory();
   } catch {
     return false;
   }
@@ -1035,7 +1145,7 @@ function isValidTranscriptPath(p) {
     return true;
   if (!isAbsolute(p))
     return false;
-  const claudeDir = join4(homedir3(), ".claude");
+  const claudeDir = join5(homedir4(), ".claude");
   try {
     const resolved = resolve2(p);
     return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync5(resolved);
