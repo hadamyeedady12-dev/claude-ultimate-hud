@@ -22,6 +22,13 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
+### v1.3.1 - 60배 성능 개선
+- 🔥 **clearTimeout 버그 수정**: `readStdin()`의 setTimeout 핸들 미해제로 프로세스가 타이머 만료까지 2~5초 대기하던 핵심 버그 수정
+- ⚡ **config-counter 파일 캐시** (60초 TTL): 매 호출 15+ sync FS 호출 → 캐시 hit 시 1회 read
+- ⚡ **git branch 파일 캐시** (30초 TTL): 매 호출 child process spawn → 캐시 hit 시 1회 read
+- 🔀 **getTranslations 병렬화**: 순차 대기 제거, Phase 2 I/O 블록으로 이동
+- 📉 **STDIN 타임아웃 단축**: 5초 → 2초
+
 ### v1.3.0 신규 기능
 - ⚡ **Transcript 증분 파싱**: 파일 캐시 기반 증분 읽기로 세션이 길어져도 일정한 HUD 속도
 - 🚀 **API 캐시 TTL 5배 증가**: 60초 → 300초로 API 블로킹 빈도 대폭 감소
@@ -127,6 +134,18 @@ bun install && bun run build
 [OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
 ## 변경 이력
+
+### v1.3.1
+- 🔥 **60배 성능 개선** (2.0초 → 0.033초)
+  - `readStdin()`의 `setTimeout` 핸들이 성공 후에도 해제되지 않아 프로세스가 타이머 만료까지 대기하던 버그 수정
+  - `clearTimeout`을 성공/에러 양쪽 경로에 추가
+- ⚡ **config-counter 파일 캐시** (60초 TTL)
+  - 매 호출 15+ sync FS 호출 제거, 캐시 hit 시 1회 read
+- ⚡ **git branch 파일 캐시** (30초 TTL)
+  - 매 호출 child process spawn 제거, 캐시 hit 시 1회 read
+- 🔀 **getTranslations 병렬화**
+  - Phase 1 → Phase 2 병렬 I/O 블록으로 이동
+- 📉 **STDIN 타임아웃 단축**: 5초 → 2초
 
 ### v1.3.0
 - ⚡ **Transcript 증분 파싱**

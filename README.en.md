@@ -22,6 +22,13 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🤖 **Agent Status**: Subagent progress tracking
 - ✅ **Todo Progress**: Current task and completion rate
 
+### v1.3.1 - 60x Performance Improvement
+- 🔥 **clearTimeout Bug Fix**: `readStdin()` setTimeout handle was never cleared after success, blocking process exit for 2-5 seconds
+- ⚡ **Config-counter File Cache** (60s TTL): Eliminates 15+ sync FS calls per invocation
+- ⚡ **Git Branch File Cache** (30s TTL): Eliminates child process spawn per invocation
+- 🔀 **Parallelize getTranslations**: Moved from sequential to Phase 2 parallel I/O block
+- 📉 **Reduce STDIN Timeout**: 5s → 2s
+
 ### New in v1.3.0
 - ⚡ **Incremental Transcript Parsing**: File-cache based incremental reading for consistent HUD speed regardless of session length
 - 🚀 **5x API Cache TTL**: 60s → 300s, significantly reducing API blocking frequency
@@ -127,6 +134,18 @@ Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
 Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## Changelog
+
+### v1.3.1
+- 🔥 **60x Performance Improvement** (2.0s → 0.033s)
+  - `readStdin()` setTimeout handle was never cleared after successful read, keeping the bun process alive until timer expiry
+  - Added `clearTimeout` on both success and error paths
+- ⚡ **Config-counter File Cache** (60s TTL)
+  - Eliminates 15+ synchronous filesystem calls, returns cached result on hit
+- ⚡ **Git Branch File Cache** (30s TTL)
+  - Eliminates child process spawn (`git rev-parse`), returns cached result on hit
+- 🔀 **Parallelize getTranslations**
+  - Moved from sequential Phase 1 → Phase 2 parallel I/O block
+- 📉 **Reduce STDIN Timeout**: 5s → 2s
 
 ### v1.3.0
 - ⚡ **Incremental Transcript Parsing**
