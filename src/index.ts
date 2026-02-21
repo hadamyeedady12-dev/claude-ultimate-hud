@@ -45,6 +45,7 @@ function isValidTranscriptPath(p: string): boolean {
 }
 
 async function readStdin(): Promise<StdinInput | null> {
+  let timerId: ReturnType<typeof setTimeout> | undefined;
   try {
     const chunks: Buffer[] = [];
     const stdinRead = (async () => {
@@ -52,13 +53,15 @@ async function readStdin(): Promise<StdinInput | null> {
         chunks.push(Buffer.from(chunk));
       }
     })();
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('stdin timeout')), STDIN_TIMEOUT_MS)
-    );
+    const timeout = new Promise<never>((_, reject) => {
+      timerId = setTimeout(() => reject(new Error('stdin timeout')), STDIN_TIMEOUT_MS);
+    });
     await Promise.race([stdinRead, timeout]);
+    clearTimeout(timerId);
     const content = Buffer.concat(chunks).toString('utf-8');
     return JSON.parse(content) as StdinInput;
   } catch (e) {
+    clearTimeout(timerId);
     debugError('stdin read', e);
     return null;
   }
@@ -77,7 +80,6 @@ async function loadConfig(): Promise<Config> {
 async function main(): Promise<void> {
   // Phase 1: Load config and read stdin in parallel
   const [config, stdin] = await Promise.all([loadConfig(), readStdin()]);
-  const t = await getTranslations(config);
 
   if (!stdin) {
     console.log(colorize('⚠️ stdin', COLORS.yellow));
@@ -88,13 +90,14 @@ async function main(): Promise<void> {
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : '';
   const validCwd = isValidDirectory(stdin.cwd ?? '') ? stdin.cwd : undefined;
 
-  // Phase 2: Run all independent I/O operations in parallel
-  const [transcript, configCounts, gitBranch, rateLimits, omcState] = await Promise.all([
+  // Phase 2: Run all independent I/O operations in parallel (including i18n)
+  const [transcript, configCounts, gitBranch, rateLimits, omcState, t] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitBranch(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
     readOmcState(validCwd),
+    getTranslations(config),
   ]);
 
   const sessionDuration = formatSessionDuration(transcript.sessionStart);

@@ -29,7 +29,7 @@ export const MAX_TRANSCRIPT_TOOLS = 20;
 export const MAX_TRANSCRIPT_AGENTS = 10;
 
 /** Timeout for stdin reading in milliseconds */
-export const STDIN_TIMEOUT_MS = 5000;
+export const STDIN_TIMEOUT_MS = 2000;
 
 /** Timeout for external process calls (git, security keychain) in milliseconds */
 export const EXEC_TIMEOUT_MS = 3000;
