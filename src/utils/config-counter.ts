@@ -4,6 +4,27 @@ import * as os from 'node:os';
 import type { ConfigCounts } from '../types.js';
 import { debugError } from './errors.js';
 
+const CONFIG_CACHE_FILE = path.join(os.homedir(), '.claude', 'claude-ultimate-hud-config-cache.json');
+const CONFIG_CACHE_TTL_MS = 60_000;
+
+function loadConfigCache(cwd: string): ConfigCounts | null {
+  try {
+    if (!fs.existsSync(CONFIG_CACHE_FILE)) return null;
+    const raw = fs.readFileSync(CONFIG_CACHE_FILE, 'utf-8');
+    const content = JSON.parse(raw) as { cwd: string; timestamp: number; data: ConfigCounts };
+    if (content.cwd !== cwd || Date.now() - content.timestamp > CONFIG_CACHE_TTL_MS) return null;
+    return content.data;
+  } catch {
+    return null;
+  }
+}
+
+function saveConfigCache(cwd: string, data: ConfigCounts): void {
+  try {
+    fs.writeFileSync(CONFIG_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), data }), { mode: 0o600 });
+  } catch { /* ignore */ }
+}
+
 function readJsonFile(filePath: string): Record<string, unknown> | null {
   if (!fs.existsSync(filePath)) return null;
   try {
@@ -87,6 +108,11 @@ function resolvePath(p: string): string {
 }
 
 export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
+  if (cwd) {
+    const cached = loadConfigCache(cwd);
+    if (cached) return cached;
+  }
+
   let claudeMdCount = 0;
   let rulesCount = 0;
   let mcpCount = 0;
@@ -181,5 +207,7 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
 
   mcpCount = allMcpServers.size;
 
-  return { claudeMdCount, rulesCount, mcpCount, hooksCount };
+  const result = { claudeMdCount, rulesCount, mcpCount, hooksCount };
+  if (cwd) saveConfigCache(cwd, result);
+  return result;
 }
