@@ -2,8 +2,8 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join5, isAbsolute, resolve as resolve2, sep } from "node:path";
-import { homedir as homedir4 } from "node:os";
+import { join as join6, isAbsolute, resolve as resolve2, sep } from "node:path";
+import { homedir as homedir5 } from "node:os";
 import { existsSync as existsSync5, statSync as statSync4 } from "node:fs";
 
 // src/types.ts
@@ -26,7 +26,7 @@ var MAX_AGENT_DESC_LENGTH = 40;
 var MAX_TODO_CONTENT_LENGTH = 50;
 var MAX_TRANSCRIPT_TOOLS = 20;
 var MAX_TRANSCRIPT_AGENTS = 10;
-var STDIN_TIMEOUT_MS = 5000;
+var STDIN_TIMEOUT_MS = 2000;
 var EXEC_TIMEOUT_MS = 3000;
 var API_TIMEOUT_MS = 5000;
 
@@ -281,6 +281,26 @@ function saveFileCache(data) {
 import * as fs2 from "node:fs";
 import * as path3 from "node:path";
 import * as os2 from "node:os";
+var CONFIG_CACHE_FILE = path3.join(os2.homedir(), ".claude", "claude-ultimate-hud-config-cache.json");
+var CONFIG_CACHE_TTL_MS = 60000;
+function loadConfigCache(cwd) {
+  try {
+    if (!fs2.existsSync(CONFIG_CACHE_FILE))
+      return null;
+    const raw = fs2.readFileSync(CONFIG_CACHE_FILE, "utf-8");
+    const content = JSON.parse(raw);
+    if (content.cwd !== cwd || Date.now() - content.timestamp > CONFIG_CACHE_TTL_MS)
+      return null;
+    return content.data;
+  } catch {
+    return null;
+  }
+}
+function saveConfigCache(cwd, data) {
+  try {
+    fs2.writeFileSync(CONFIG_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), data }), { mode: 384 });
+  } catch {}
+}
 function readJsonFile(filePath) {
   if (!fs2.existsSync(filePath))
     return null;
@@ -359,6 +379,11 @@ function resolvePath(p) {
   }
 }
 async function countConfigs(cwd) {
+  if (cwd) {
+    const cached = loadConfigCache(cwd);
+    if (cached)
+      return cached;
+  }
   let claudeMdCount = 0;
   let rulesCount = 0;
   let mcpCount = 0;
@@ -436,7 +461,10 @@ async function countConfigs(cwd) {
     }
   }
   mcpCount = allMcpServers.size;
-  return { claudeMdCount, rulesCount, mcpCount, hooksCount };
+  const result = { claudeMdCount, rulesCount, mcpCount, hooksCount };
+  if (cwd)
+    saveConfigCache(cwd, result);
+  return result;
 }
 
 // src/utils/transcript.ts
@@ -678,7 +706,29 @@ function extractTarget(toolName, input) {
 
 // src/utils/git.ts
 import { execFile as execFile2 } from "node:child_process";
-import { existsSync as existsSync3, statSync as statSync2 } from "node:fs";
+import { existsSync as existsSync3, statSync as statSync2, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join4 } from "node:path";
+import { homedir as homedir4 } from "node:os";
+var GIT_CACHE_FILE = join4(homedir4(), ".claude", "claude-ultimate-hud-git-cache.json");
+var GIT_CACHE_TTL_MS = 30000;
+function loadGitCache(cwd) {
+  try {
+    if (!existsSync3(GIT_CACHE_FILE))
+      return null;
+    const raw = readFileSync3(GIT_CACHE_FILE, "utf-8");
+    const content = JSON.parse(raw);
+    if (content.cwd !== cwd || Date.now() - content.timestamp > GIT_CACHE_TTL_MS)
+      return null;
+    return content.branch;
+  } catch {
+    return null;
+  }
+}
+function saveGitCache(cwd, branch) {
+  try {
+    writeFileSync3(GIT_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), branch }), { mode: 384 });
+  } catch {}
+}
 function execFileAsync2(cmd, args, options) {
   return new Promise((resolve2, reject) => {
     execFile2(cmd, args, options, (error, stdout) => {
@@ -692,6 +742,9 @@ function execFileAsync2(cmd, args, options) {
 async function getGitBranch(cwd) {
   if (!cwd)
     return;
+  const cached = loadGitCache(cwd);
+  if (cached)
+    return cached;
   try {
     if (!existsSync3(cwd) || !statSync2(cwd).isDirectory()) {
       return;
@@ -705,7 +758,10 @@ async function getGitBranch(cwd) {
       encoding: "utf-8",
       timeout: EXEC_TIMEOUT_MS
     });
-    return result.trim() || undefined;
+    const branch = result.trim() || undefined;
+    if (branch)
+      saveGitCache(cwd, branch);
+    return branch;
   } catch (e) {
     debugError("git branch", e);
     return;
@@ -804,8 +860,8 @@ async function getTranslations(config) {
 }
 
 // src/utils/omc-state.ts
-import { existsSync as existsSync4, statSync as statSync3, readdirSync as readdirSync2, readFileSync as readFileSync3 } from "node:fs";
-import { join as join4 } from "node:path";
+import { existsSync as existsSync4, statSync as statSync3, readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
+import { join as join5 } from "node:path";
 var STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 function readJsonFile2(filePath) {
   try {
@@ -814,13 +870,13 @@ function readJsonFile2(filePath) {
     const stat2 = statSync3(filePath);
     if (!stat2.isFile() || Date.now() - stat2.mtimeMs > STALE_THRESHOLD_MS)
       return null;
-    return JSON.parse(readFileSync3(filePath, "utf-8"));
+    return JSON.parse(readFileSync4(filePath, "utf-8"));
   } catch {
     return null;
   }
 }
 function findSessionStateDir(omcStateDir) {
-  const sessionsDir = join4(omcStateDir, "sessions");
+  const sessionsDir = join5(omcStateDir, "sessions");
   try {
     if (!existsSync4(sessionsDir))
       return null;
@@ -830,35 +886,35 @@ function findSessionStateDir(omcStateDir) {
       if (!entry.isDirectory())
         continue;
       try {
-        const mtime = statSync3(join4(sessionsDir, entry.name)).mtimeMs;
+        const mtime = statSync3(join5(sessionsDir, entry.name)).mtimeMs;
         if (!latest || mtime > latest.mtime) {
           latest = { name: entry.name, mtime };
         }
       } catch {}
     }
-    return latest ? join4(sessionsDir, latest.name) : null;
+    return latest ? join5(sessionsDir, latest.name) : null;
   } catch {
     return null;
   }
 }
 function readStateFile(cwd, filename) {
-  const omcStateDir = join4(cwd, ".omc", "state");
+  const omcStateDir = join5(cwd, ".omc", "state");
   const sessionDir = findSessionStateDir(omcStateDir);
   if (sessionDir) {
-    const data2 = readJsonFile2(join4(sessionDir, filename));
+    const data2 = readJsonFile2(join5(sessionDir, filename));
     if (data2)
       return data2;
   }
-  const data = readJsonFile2(join4(omcStateDir, filename));
+  const data = readJsonFile2(join5(omcStateDir, filename));
   if (data)
     return data;
-  return readJsonFile2(join4(cwd, ".omc", filename));
+  return readJsonFile2(join5(cwd, ".omc", filename));
 }
 async function readOmcState(cwd) {
   const state = {};
   if (!cwd)
     return state;
-  if (!existsSync4(join4(cwd, ".omc")))
+  if (!existsSync4(join5(cwd, ".omc")))
     return state;
   try {
     const ralph = readStateFile(cwd, "ralph-state.json");
@@ -1130,7 +1186,7 @@ function render(ctx, t) {
 }
 
 // src/index.ts
-var CONFIG_PATH = join5(homedir4(), ".claude", "claude-ultimate-hud.local.json");
+var CONFIG_PATH = join6(homedir5(), ".claude", "claude-ultimate-hud.local.json");
 function isValidDirectory(p) {
   if (!p || !isAbsolute(p))
     return false;
@@ -1145,7 +1201,7 @@ function isValidTranscriptPath(p) {
     return true;
   if (!isAbsolute(p))
     return false;
-  const claudeDir = join5(homedir4(), ".claude");
+  const claudeDir = join6(homedir5(), ".claude");
   try {
     const resolved = resolve2(p);
     return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync5(resolved);
@@ -1154,6 +1210,7 @@ function isValidTranscriptPath(p) {
   }
 }
 async function readStdin() {
+  let timerId;
   try {
     const chunks = [];
     const stdinRead = (async () => {
@@ -1161,11 +1218,15 @@ async function readStdin() {
         chunks.push(Buffer.from(chunk));
       }
     })();
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("stdin timeout")), STDIN_TIMEOUT_MS));
+    const timeout = new Promise((_, reject) => {
+      timerId = setTimeout(() => reject(new Error("stdin timeout")), STDIN_TIMEOUT_MS);
+    });
     await Promise.race([stdinRead, timeout]);
+    clearTimeout(timerId);
     const content = Buffer.concat(chunks).toString("utf-8");
     return JSON.parse(content);
   } catch (e) {
+    clearTimeout(timerId);
     debugError("stdin read", e);
     return null;
   }
@@ -1181,7 +1242,6 @@ async function loadConfig() {
 }
 async function main() {
   const [config, stdin] = await Promise.all([loadConfig(), readStdin()]);
-  const t = await getTranslations(config);
   if (!stdin) {
     console.log(colorize("⚠️ stdin", COLORS.yellow));
     return;
@@ -1189,12 +1249,13 @@ async function main() {
   const transcriptPath = stdin.transcript_path ?? "";
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : "";
   const validCwd = isValidDirectory(stdin.cwd ?? "") ? stdin.cwd : undefined;
-  const [transcript, configCounts, gitBranch, rateLimits, omcState] = await Promise.all([
+  const [transcript, configCounts, gitBranch, rateLimits, omcState, t] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitBranch(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
-    readOmcState(validCwd)
+    readOmcState(validCwd),
+    getTranslations(config)
   ]);
   const sessionDuration = formatSessionDuration(transcript.sessionStart);
   const ctx = {
