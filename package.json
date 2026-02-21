@@ -1,6 +1,6 @@
 {
   "name": "claude-ultimate-hud",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "type": "module",
   "description": "Ultimate status line combining claude-dashboard rate limits with claude-hud activity tracking",
   "main": "dist/index.js",
