@@ -2,9 +2,9 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join5, isAbsolute, resolve as resolve2, sep } from "node:path";
-import { homedir as homedir5 } from "node:os";
-import { existsSync as existsSync4, statSync as statSync3 } from "node:fs";
+import { join as join6, isAbsolute, resolve as resolve2, sep } from "node:path";
+import { homedir as homedir6 } from "node:os";
+import { existsSync as existsSync5, statSync as statSync3 } from "node:fs";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
@@ -19,6 +19,7 @@ var DEFAULT_CONFIG = {
 var PROGRESS_BAR_WIDTH = 10;
 var COLOR_THRESHOLD_WARNING = 50;
 var COLOR_THRESHOLD_DANGER = 80;
+var CONTEXT_HIGH_THRESHOLD = 85;
 var MAX_RUNNING_TOOLS = 2;
 var MAX_COMPLETED_TOOL_TYPES = 4;
 var MAX_AGENTS_DISPLAY = 3;
@@ -30,6 +31,11 @@ var MAX_TRANSCRIPT_AGENTS = 10;
 var STDIN_TIMEOUT_MS = 2000;
 var EXEC_TIMEOUT_MS = 3000;
 var API_TIMEOUT_MS = 5000;
+var STALE_CACHE_MAX_AGE_S = 3600;
+var NEGATIVE_CACHE_TTL_S = 30;
+var LOCK_STALE_S = 30;
+var LOCK_WAIT_MS = 2000;
+var BURN_RATE_WINDOW_MS = 120000;
 
 // src/utils/colors.ts
 var COLORS = {
@@ -100,6 +106,12 @@ function formatSessionDuration(sessionStart, now = () => Date.now()) {
   if (!sessionStart)
     return "";
   const ms = now() - sessionStart.getTime();
+  return formatDurationMs(ms);
+}
+function formatSessionDurationMs(ms) {
+  return formatDurationMs(ms);
+}
+function formatDurationMs(ms) {
   const mins = Math.floor(ms / 60000);
   if (mins < 1)
     return "<1m";
@@ -125,6 +137,44 @@ function truncatePath(filePath, maxLen = 20) {
   if (filename.length >= maxLen)
     return filename.slice(0, maxLen - 3) + "...";
   return "..." + path.sep + filename;
+}
+var ANSI_REGEX = /\x1b\[[0-9;]*m/g;
+function stripAnsi(str) {
+  return str.replace(ANSI_REGEX, "");
+}
+function isWideChar(code) {
+  return code >= 4352 && code <= 4447 || code >= 11904 && code <= 12350 || code >= 12352 && code <= 40959 || code >= 44032 && code <= 55215 || code >= 63744 && code <= 64255 || code >= 65040 && code <= 65135 || code >= 65281 && code <= 65376 || code >= 65504 && code <= 65510 || code >= 131072 && code <= 195103 || code >= 127744 && code <= 129535;
+}
+function visualWidth(str) {
+  const plain = stripAnsi(str);
+  let width = 0;
+  for (const ch of plain) {
+    const code = ch.codePointAt(0);
+    width += isWideChar(code) ? 2 : 1;
+  }
+  return width;
+}
+function sliceVisible(str, maxWidth) {
+  let visW = 0;
+  let result = "";
+  let i = 0;
+  while (i < str.length) {
+    const ansiMatch = str.slice(i).match(/^\x1b\[[0-9;]*m/);
+    if (ansiMatch) {
+      result += ansiMatch[0];
+      i += ansiMatch[0].length;
+      continue;
+    }
+    const ch = str[i];
+    const code = ch.codePointAt(0);
+    const charWidth = isWideChar(code) ? 2 : 1;
+    if (visW + charWidth > maxWidth)
+      break;
+    result += ch;
+    visW += charWidth;
+    i++;
+  }
+  return result + "\x1B[0m";
 }
 
 // src/utils/api-client.ts
@@ -210,13 +260,46 @@ async function getCredentialsFromFile() {
 // src/utils/api-client.ts
 var CACHE_DIR = path2.join(os.homedir(), ".claude");
 var CACHE_FILE = path2.join(CACHE_DIR, "claude-ultimate-hud-cache.json");
+var NEGATIVE_CACHE_FILE = path2.join(CACHE_DIR, "claude-ultimate-hud-ncache.json");
+var LOCK_FILE = path2.join(CACHE_DIR, "claude-ultimate-hud-usage.lock");
 var ANTHROPIC_BETA_HEADER = "oauth-2025-04-20";
+var API_HEADERS_BASE = {
+  Accept: "application/json",
+  "Content-Type": "application/json",
+  "User-Agent": "claude-code/2.1",
+  "anthropic-beta": ANTHROPIC_BETA_HEADER
+};
 async function fetchUsageLimits(ttlSeconds = 60) {
-  const fileCache = loadFileCache(ttlSeconds);
-  if (fileCache) {
-    debugTrace("api", "file cache hit");
-    return fileCache;
+  if (isNegativeCached()) {
+    debugTrace("api", "negative cache hit");
+    return loadFileCache(STALE_CACHE_MAX_AGE_S);
   }
+  const freshCache = loadFileCache(ttlSeconds);
+  if (freshCache) {
+    debugTrace("api", "file cache hit");
+    return freshCache;
+  }
+  let lockFd = null;
+  try {
+    cleanStaleLock();
+    lockFd = fs.openSync(LOCK_FILE, "wx");
+  } catch {
+    debugTrace("api", "lock contention, waiting");
+    await waitForLock();
+    const stale = loadFileCache(STALE_CACHE_MAX_AGE_S);
+    if (stale) {
+      debugTrace("api", "stale fallback after lock wait");
+      return stale;
+    }
+    return null;
+  }
+  try {
+    return await doFetch();
+  } finally {
+    releaseLock(lockFd);
+  }
+}
+async function doFetch() {
   debugTrace("api", "cache expired, fetching");
   let token = await getCredentials();
   if (!token)
@@ -226,41 +309,76 @@ async function fetchUsageLimits(ttlSeconds = 60) {
     const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     const response = await fetch("https://api.anthropic.com/api/oauth/usage", {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": "claude-ultimate-hud/1.0.0",
-        Authorization: `Bearer ${token}`,
-        "anthropic-beta": ANTHROPIC_BETA_HEADER
-      },
+      headers: { ...API_HEADERS_BASE, Authorization: `Bearer ${token}` },
       signal: controller.signal
     });
-    token = null;
     clearTimeout(timeout);
-    if (!response.ok)
-      return null;
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get("retry-after") ?? "", 10);
+      if (retryAfter > 0 && retryAfter <= 10) {
+        debugTrace("api", `429 retry after ${retryAfter}s`);
+        await new Promise((r) => setTimeout(r, retryAfter * 1000));
+        const retryController = new AbortController;
+        const retryTimeout = setTimeout(() => retryController.abort(), API_TIMEOUT_MS);
+        const retryResponse = await fetch("https://api.anthropic.com/api/oauth/usage", {
+          method: "GET",
+          headers: { ...API_HEADERS_BASE, Authorization: `Bearer ${token}` },
+          signal: retryController.signal
+        });
+        clearTimeout(retryTimeout);
+        token = null;
+        if (retryResponse.ok) {
+          const data2 = await retryResponse.json();
+          const limits2 = extractLimits(data2);
+          saveFileCache(limits2);
+          clearNegativeCache();
+          debugTrace("api", "429 retry ok");
+          return limits2;
+        }
+      }
+      token = null;
+      debugTrace("api", "429 failed");
+      saveNegativeCache();
+      return loadFileCache(STALE_CACHE_MAX_AGE_S);
+    }
+    token = null;
+    if (!response.ok) {
+      saveNegativeCache();
+      const stale = loadFileCache(STALE_CACHE_MAX_AGE_S);
+      if (stale)
+        debugTrace("api", "stale fallback");
+      return stale;
+    }
     const data = await response.json();
-    const limits = {
-      five_hour: data.five_hour,
-      seven_day: data.seven_day,
-      seven_day_sonnet: data.seven_day_sonnet
-    };
+    const limits = extractLimits(data);
     saveFileCache(limits);
+    clearNegativeCache();
     debugTrace("api", "fetch ok");
     return limits;
   } catch (e) {
     token = null;
     debugError("API fetch", e);
-    return null;
+    saveNegativeCache();
+    const stale = loadFileCache(STALE_CACHE_MAX_AGE_S);
+    if (stale)
+      debugTrace("api", "stale fallback on error");
+    return stale;
   }
 }
-function loadFileCache(ttlSeconds) {
+function extractLimits(data) {
+  return {
+    five_hour: data.five_hour,
+    seven_day: data.seven_day,
+    seven_day_sonnet: data.seven_day_sonnet
+  };
+}
+function loadFileCache(maxAgeSeconds) {
   try {
     if (!fs.existsSync(CACHE_FILE))
       return null;
     const content = JSON.parse(fs.readFileSync(CACHE_FILE, "utf-8"));
     const ageSeconds = (Date.now() - content.timestamp) / 1000;
-    if (ageSeconds < ttlSeconds)
+    if (ageSeconds < maxAgeSeconds)
       return content.data;
     return null;
   } catch {
@@ -277,6 +395,60 @@ function saveFileCache(data) {
     fs.renameSync(tmpFile, CACHE_FILE);
   } catch (e) {
     debugError("cache write", e);
+  }
+}
+function isNegativeCached() {
+  try {
+    if (!fs.existsSync(NEGATIVE_CACHE_FILE))
+      return false;
+    const content = JSON.parse(fs.readFileSync(NEGATIVE_CACHE_FILE, "utf-8"));
+    return (Date.now() - content.timestamp) / 1000 < NEGATIVE_CACHE_TTL_S;
+  } catch {
+    return false;
+  }
+}
+function saveNegativeCache() {
+  try {
+    const tmpFile = NEGATIVE_CACHE_FILE + "." + crypto.randomBytes(4).toString("hex") + ".tmp";
+    fs.writeFileSync(tmpFile, JSON.stringify({ timestamp: Date.now() }), { mode: 384 });
+    fs.renameSync(tmpFile, NEGATIVE_CACHE_FILE);
+  } catch (e) {
+    debugError("negative cache write", e);
+  }
+}
+function clearNegativeCache() {
+  try {
+    fs.unlinkSync(NEGATIVE_CACHE_FILE);
+  } catch {}
+}
+function cleanStaleLock() {
+  try {
+    const stat2 = fs.statSync(LOCK_FILE);
+    if (Date.now() - stat2.mtimeMs > LOCK_STALE_S * 1000) {
+      fs.unlinkSync(LOCK_FILE);
+      debugTrace("api", "removed stale lock");
+    }
+  } catch {}
+}
+async function waitForLock() {
+  const start = Date.now();
+  while (Date.now() - start < LOCK_WAIT_MS) {
+    try {
+      fs.statSync(LOCK_FILE);
+    } catch {
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+function releaseLock(fd) {
+  if (fd !== null) {
+    try {
+      fs.closeSync(fd);
+    } catch {}
+    try {
+      fs.unlinkSync(LOCK_FILE);
+    } catch {}
   }
 }
 
@@ -554,6 +726,22 @@ function saveTranscriptCache(filePath, fileSize, toolMap, agentMap, todos, resul
     debugError("transcript cache write", e);
   }
 }
+function normalizeStatus(status) {
+  switch (status) {
+    case "not_started":
+    case "pending":
+      return "pending";
+    case "running":
+    case "in_progress":
+      return "in_progress";
+    case "done":
+    case "complete":
+    case "completed":
+      return "completed";
+    default:
+      return "pending";
+  }
+}
 async function parseTranscript(transcriptPath) {
   const result = {
     tools: [],
@@ -669,6 +857,29 @@ function processEntry(entry, toolMap, agentMap, latestTodos, result) {
           latestTodos.length = 0;
           latestTodos.push(...input.todos);
         }
+      } else if (block.name === "TaskCreate") {
+        const input = block.input;
+        if (input?.id && input?.content) {
+          const todo = {
+            id: input.id,
+            content: input.content,
+            status: normalizeStatus(input.status)
+          };
+          const existingIdx = latestTodos.findIndex((t) => t.id === input.id);
+          if (existingIdx >= 0) {
+            latestTodos[existingIdx] = todo;
+          } else {
+            latestTodos.push(todo);
+          }
+        }
+      } else if (block.name === "TaskUpdate") {
+        const input = block.input;
+        if (input?.id) {
+          const existing = latestTodos.find((t) => t.id === input.id);
+          if (existing && input.status) {
+            existing.status = normalizeStatus(input.status);
+          }
+        }
       } else {
         toolMap.set(block.id, toolEntry);
         result.toolCallCount++;
@@ -722,14 +933,14 @@ function loadGitCache(cwd) {
     const content = JSON.parse(raw);
     if (content.cwd !== cwd || Date.now() - content.timestamp > GIT_CACHE_TTL_MS)
       return null;
-    return content.branch;
+    return content.info;
   } catch {
     return null;
   }
 }
-function saveGitCache(cwd, branch) {
+function saveGitCache(cwd, info) {
   try {
-    writeFileSync3(GIT_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), branch }), { mode: 384 });
+    writeFileSync3(GIT_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), info }), { mode: 384 });
   } catch {}
 }
 function execFileAsync2(cmd, args, options) {
@@ -742,31 +953,41 @@ function execFileAsync2(cmd, args, options) {
     });
   });
 }
-async function getGitBranch(cwd) {
+async function getGitInfo(cwd) {
   if (!cwd)
     return;
   const cached = loadGitCache(cwd);
   if (cached)
     return cached;
   try {
-    if (!existsSync3(cwd) || !statSync2(cwd).isDirectory()) {
+    if (!existsSync3(cwd) || !statSync2(cwd).isDirectory())
       return;
-    }
   } catch {
     return;
   }
   try {
-    const result = await execFileAsync2("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
-      cwd,
-      encoding: "utf-8",
-      timeout: EXEC_TIMEOUT_MS
-    });
-    const branch = result.trim() || undefined;
-    if (branch)
-      saveGitCache(cwd, branch);
-    return branch;
+    const execOpts = { cwd, encoding: "utf-8", timeout: EXEC_TIMEOUT_MS };
+    const [branchResult, statusResult, upstreamResult] = await Promise.all([
+      execFileAsync2("git", ["rev-parse", "--abbrev-ref", "HEAD"], execOpts),
+      execFileAsync2("git", ["--no-optional-locks", "status", "--porcelain"], execOpts).catch(() => ""),
+      execFileAsync2("git", ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], execOpts).catch(() => "")
+    ]);
+    const branch = branchResult.trim();
+    if (!branch)
+      return;
+    const dirty = statusResult.trim().length > 0;
+    let ahead = 0;
+    let behind = 0;
+    const parts = upstreamResult.trim().split(/\s+/);
+    if (parts.length === 2) {
+      behind = parseInt(parts[0], 10) || 0;
+      ahead = parseInt(parts[1], 10) || 0;
+    }
+    const info = { branch, dirty, ahead, behind };
+    saveGitCache(cwd, info);
+    return info;
   } catch (e) {
-    debugError("git branch", e);
+    debugError("git info", e);
     return;
   }
 }
@@ -862,6 +1083,40 @@ async function getTranslations(config) {
   return lang === "ko" ? KO : EN;
 }
 
+// src/utils/speed-tracker.ts
+import * as fs4 from "node:fs";
+import * as path5 from "node:path";
+import * as os4 from "node:os";
+var SPEED_CACHE_FILE = path5.join(os4.homedir(), ".claude", "claude-ultimate-hud-speed-cache.json");
+function trackTokenSpeed(currentTokens) {
+  const now = Date.now();
+  let entries = [];
+  try {
+    if (fs4.existsSync(SPEED_CACHE_FILE)) {
+      const raw = JSON.parse(fs4.readFileSync(SPEED_CACHE_FILE, "utf-8"));
+      entries = raw.entries ?? [];
+    }
+  } catch {}
+  entries.push({ timestamp: now, tokens: currentTokens });
+  entries = entries.filter((e) => now - e.timestamp <= BURN_RATE_WINDOW_MS);
+  try {
+    fs4.writeFileSync(SPEED_CACHE_FILE, JSON.stringify({ entries }), { mode: 384 });
+  } catch (e) {
+    debugError("speed cache write", e);
+  }
+  if (entries.length < 2)
+    return null;
+  const oldest = entries[0];
+  const newest = entries[entries.length - 1];
+  const timeDiffMs = newest.timestamp - oldest.timestamp;
+  if (timeDiffMs < 1e4)
+    return null;
+  const tokenDiff = newest.tokens - oldest.tokens;
+  if (tokenDiff <= 0)
+    return null;
+  return Math.round(tokenDiff / timeDiffMs * 60000);
+}
+
 // src/render/session-line.ts
 var SEP = ` ${COLORS.dim}│${RESET} `;
 function renderSessionLine(ctx, t) {
@@ -869,17 +1124,23 @@ function renderSessionLine(ctx, t) {
   const modelName = shortenModelName(ctx.stdin.model.display_name);
   parts.push(`${COLORS.cyan}\uD83E\uDD16 ${modelName}${RESET}`);
   const usage = ctx.stdin.context_window.current_usage;
-  if (!usage) {
+  const nativePercent = ctx.stdin.used_percentage;
+  if (!usage && nativePercent == null) {
     parts.push(colorize(t.errors.no_context, COLORS.dim));
     return parts.join(SEP);
   }
-  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+  const currentTokens = usage ? usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens : 0;
   const totalTokens = ctx.stdin.context_window.context_window_size;
-  const percent = Math.min(100, Math.round(currentTokens / totalTokens * 100));
+  const percent = nativePercent != null ? Math.min(100, Math.round(nativePercent)) : Math.min(100, Math.round(currentTokens / totalTokens * 100));
   parts.push(renderProgressBar(percent));
   const percentColor = getColorForPercent(percent);
   parts.push(colorize(`${percent}%`, percentColor));
   parts.push(`${formatTokens(currentTokens)}/${formatTokens(totalTokens)}`);
+  if (percent >= CONTEXT_HIGH_THRESHOLD && usage && ctx.config.display?.showTokenBreakdown !== false) {
+    const inTokens = formatTokens(usage.input_tokens);
+    const cacheTokens = formatTokens(usage.cache_creation_input_tokens + usage.cache_read_input_tokens);
+    parts.push(dim(`(in: ${inTokens}, cache: ${cacheTokens})`));
+  }
   const rateParts = buildRateLimitsSection(ctx, t);
   if (rateParts) {
     parts.push(rateParts);
@@ -922,15 +1183,25 @@ function buildRateLimitsSection(ctx, t) {
 }
 
 // src/render/project-line.ts
-import path5 from "node:path";
+import path6 from "node:path";
 var SEP2 = ` ${COLORS.dim}│${RESET} `;
 function renderProjectLine(ctx) {
   const parts = [];
   if (ctx.stdin.cwd) {
-    const projectName = path5.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
+    const projectName = path6.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
     let projectPart = `\uD83D\uDCC1 ${yellow(projectName)}`;
-    if (ctx.gitBranch) {
-      projectPart += ` ${magenta("git:(")}${cyan(ctx.gitBranch)}${magenta(")")}`;
+    if (ctx.gitInfo) {
+      let gitStr = ctx.gitInfo.branch;
+      if (ctx.gitInfo.dirty)
+        gitStr += "*";
+      const modifiers = [];
+      if (ctx.gitInfo.ahead > 0)
+        modifiers.push(`↑${ctx.gitInfo.ahead}`);
+      if (ctx.gitInfo.behind > 0)
+        modifiers.push(`↓${ctx.gitInfo.behind}`);
+      if (modifiers.length > 0)
+        gitStr += ` ${modifiers.join(" ")}`;
+      projectPart += ` ${magenta("git:(")}${cyan(gitStr)}${magenta(")")}`;
     }
     parts.push(projectPart);
   }
@@ -1039,12 +1310,23 @@ function renderStatsLine(ctx, t) {
     parts.push(`${COLORS.cyan}\uD83C\uDFAF skill:${tr.lastSkill.name}${RESET}`);
   }
   if (tr.toolCallCount > 0 || tr.agentCallCount > 0 || tr.skillCallCount > 0) {
-    const counts = [
-      `T:${tr.toolCallCount}`,
-      `A:${tr.agentCallCount}`,
-      `S:${tr.skillCallCount}`
-    ].join(" ");
+    const counts = [`T:${tr.toolCallCount}`, `A:${tr.agentCallCount}`, `S:${tr.skillCallCount}`].join(" ");
     parts.push(colorize(counts, COLORS.dim));
+  }
+  if (ctx.burnRate != null && ctx.burnRate > 0) {
+    parts.push(colorize(`\uD83D\uDD25 ${formatTokens(ctx.burnRate)} tok/min`, COLORS.dim));
+  }
+  const added = ctx.stdin.total_lines_added;
+  const removed = ctx.stdin.total_lines_removed;
+  if (added != null || removed != null) {
+    const linesParts = [];
+    if (added != null && added > 0)
+      linesParts.push(`+${added}`);
+    if (removed != null && removed > 0)
+      linesParts.push(`-${removed}`);
+    if (linesParts.length > 0) {
+      parts.push(colorize(linesParts.join(" "), COLORS.dim));
+    }
   }
   if (parts.length === 0)
     return "";
@@ -1054,13 +1336,19 @@ function renderStatsLine(ctx, t) {
 // src/render/context-warning.ts
 function renderContextWarning(ctx, t) {
   const usage = ctx.stdin.context_window.current_usage;
-  if (!usage)
+  const nativePercent = ctx.stdin.used_percentage;
+  if (!usage && nativePercent == null)
     return "";
-  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
-  const totalTokens = ctx.stdin.context_window.context_window_size;
-  if (totalTokens <= 0)
-    return "";
-  const percent = Math.min(100, Math.round(currentTokens / totalTokens * 100));
+  let percent;
+  if (nativePercent != null) {
+    percent = Math.min(100, Math.round(nativePercent));
+  } else {
+    const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+    const totalTokens = ctx.stdin.context_window.context_window_size;
+    if (totalTokens <= 0)
+      return "";
+    percent = Math.min(100, Math.round(currentTokens / totalTokens * 100));
+  }
   if (percent >= 90) {
     const template = t.contextWarning?.critical ?? "Context {pct}% - /compact recommended!";
     return `${COLORS.red}\uD83D\uDD34 ${template.replace("{pct}", String(percent))}${RESET}`;
@@ -1074,27 +1362,33 @@ function renderContextWarning(ctx, t) {
 
 // src/render/index.ts
 function render(ctx, t) {
+  const display = ctx.config.display ?? {};
+  const termWidth = process.stdout.columns || 120;
   const lines = [
     renderSessionLine(ctx, t),
-    renderStatsLine(ctx, t),
+    display.showStats !== false ? renderStatsLine(ctx, t) : "",
     renderProjectLine(ctx),
-    renderToolsLine(ctx),
-    renderAgentsLine(ctx),
-    renderTodosLine(ctx, t),
+    display.showTools !== false ? renderToolsLine(ctx) : null,
+    display.showAgents !== false ? renderAgentsLine(ctx) : null,
+    display.showTodos !== false ? renderTodosLine(ctx, t) : null,
     renderContextWarning(ctx, t)
   ].filter(Boolean);
   for (const line of lines) {
-    console.log(`${RESET}${line.replace(/ /g, " ")}`);
+    let outputLine = `${RESET}${line.replace(/ /g, " ")}`;
+    if (visualWidth(outputLine) > termWidth) {
+      outputLine = sliceVisible(outputLine, termWidth);
+    }
+    console.log(outputLine);
   }
 }
 
 // src/index.ts
-var CONFIG_PATH = join5(homedir5(), ".claude", "claude-ultimate-hud.local.json");
+var CONFIG_PATH = join6(homedir6(), ".claude", "claude-ultimate-hud.local.json");
 function isValidDirectory(p) {
   if (!p || !isAbsolute(p))
     return false;
   try {
-    return existsSync4(p) && statSync3(p).isDirectory();
+    return existsSync5(p) && statSync3(p).isDirectory();
   } catch {
     return false;
   }
@@ -1104,10 +1398,10 @@ function isValidTranscriptPath(p) {
     return true;
   if (!isAbsolute(p))
     return false;
-  const claudeDir = join5(homedir5(), ".claude");
+  const claudeDir = join6(homedir6(), ".claude");
   try {
     const resolved = resolve2(p);
-    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync4(resolved);
+    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync5(resolved);
   } catch {
     return false;
   }
@@ -1156,22 +1450,26 @@ async function main() {
   const transcriptPath = stdin.transcript_path ?? "";
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : "";
   const validCwd = isValidDirectory(stdin.cwd ?? "") ? stdin.cwd : undefined;
-  const [transcript, configCounts, gitBranch, rateLimits, t] = await Promise.all([
+  const [transcript, configCounts, gitInfo, rateLimits, t] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
-    getGitBranch(validCwd),
+    getGitInfo(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
     getTranslations(config)
   ]);
-  const sessionDuration = formatSessionDuration(transcript.sessionStart);
+  const sessionDuration = stdin.total_duration_ms != null ? formatSessionDurationMs(stdin.total_duration_ms) : formatSessionDuration(transcript.sessionStart);
+  const usage = stdin.context_window.current_usage;
+  const currentTokens = usage ? usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens : 0;
+  const burnRate = currentTokens > 0 ? trackTokenSpeed(currentTokens) : null;
   const ctx = {
     stdin,
     config,
     transcript,
     configCounts,
-    gitBranch,
+    gitInfo,
     sessionDuration,
-    rateLimits
+    rateLimits,
+    burnRate
   };
   render(ctx, t);
 }

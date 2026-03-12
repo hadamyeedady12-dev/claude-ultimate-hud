@@ -161,6 +161,25 @@ function saveTranscriptCache(
   }
 }
 
+// --- Status normalization for TaskCreate/TaskUpdate ---
+
+function normalizeStatus(status?: string): 'pending' | 'in_progress' | 'completed' {
+  switch (status) {
+    case 'not_started':
+    case 'pending':
+      return 'pending';
+    case 'running':
+    case 'in_progress':
+      return 'in_progress';
+    case 'done':
+    case 'complete':
+    case 'completed':
+      return 'completed';
+    default:
+      return 'pending';
+  }
+}
+
 // --- Main parser with incremental reading ---
 
 export async function parseTranscript(transcriptPath: string): Promise<TranscriptData> {
@@ -308,6 +327,29 @@ function processEntry(
         if (input?.todos && Array.isArray(input.todos)) {
           latestTodos.length = 0;
           latestTodos.push(...input.todos);
+        }
+      } else if (block.name === 'TaskCreate') {
+        const input = block.input as { id?: string; content?: string; status?: string };
+        if (input?.id && input?.content) {
+          const todo: TodoEntry = {
+            id: input.id,
+            content: input.content,
+            status: normalizeStatus(input.status),
+          };
+          const existingIdx = latestTodos.findIndex((t) => t.id === input.id);
+          if (existingIdx >= 0) {
+            latestTodos[existingIdx] = todo;
+          } else {
+            latestTodos.push(todo);
+          }
+        }
+      } else if (block.name === 'TaskUpdate') {
+        const input = block.input as { id?: string; status?: string };
+        if (input?.id) {
+          const existing = latestTodos.find((t) => t.id === input.id);
+          if (existing && input.status) {
+            existing.status = normalizeStatus(input.status);
+          }
         }
       } else {
         toolMap.set(block.id, toolEntry);

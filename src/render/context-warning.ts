@@ -3,12 +3,20 @@ import { COLORS, RESET } from '../utils/colors.js';
 
 export function renderContextWarning(ctx: RenderContext, t: Translations): string {
   const usage = ctx.stdin.context_window.current_usage;
-  if (!usage) return '';
+  const nativePercent = ctx.stdin.used_percentage;
 
-  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
-  const totalTokens = ctx.stdin.context_window.context_window_size;
-  if (totalTokens <= 0) return '';
-  const percent = Math.min(100, Math.round((currentTokens / totalTokens) * 100));
+  if (!usage && nativePercent == null) return '';
+
+  let percent: number;
+  if (nativePercent != null) {
+    percent = Math.min(100, Math.round(nativePercent));
+  } else {
+    const currentTokens =
+      usage!.input_tokens + usage!.cache_creation_input_tokens + usage!.cache_read_input_tokens;
+    const totalTokens = ctx.stdin.context_window.context_window_size;
+    if (totalTokens <= 0) return '';
+    percent = Math.min(100, Math.round((currentTokens / totalTokens) * 100));
+  }
 
   if (percent >= 90) {
     const template = t.contextWarning?.critical ?? 'Context {pct}% - /compact recommended!';

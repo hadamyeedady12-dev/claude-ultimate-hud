@@ -10,9 +10,15 @@ export function renderProjectLine(ctx: RenderContext): string {
   if (ctx.stdin.cwd) {
     const projectName = path.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
     let projectPart = `📁 ${yellow(projectName)}`;
-    
-    if (ctx.gitBranch) {
-      projectPart += ` ${magenta('git:(')}${cyan(ctx.gitBranch)}${magenta(')')}`;
+
+    if (ctx.gitInfo) {
+      let gitStr = ctx.gitInfo.branch;
+      if (ctx.gitInfo.dirty) gitStr += '*';
+      const modifiers: string[] = [];
+      if (ctx.gitInfo.ahead > 0) modifiers.push(`↑${ctx.gitInfo.ahead}`);
+      if (ctx.gitInfo.behind > 0) modifiers.push(`↓${ctx.gitInfo.behind}`);
+      if (modifiers.length > 0) gitStr += ` ${modifiers.join(' ')}`;
+      projectPart += ` ${magenta('git:(')}${cyan(gitStr)}${magenta(')')}`;
     }
     parts.push(projectPart);
   }

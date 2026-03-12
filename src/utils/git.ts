@@ -2,28 +2,37 @@ import { execFile } from 'node:child_process';
 import { existsSync, statSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import type { GitInfo } from '../types.js';
 import { debugError } from './errors.js';
 import { EXEC_TIMEOUT_MS } from '../constants.js';
 
 const GIT_CACHE_FILE = join(homedir(), '.claude', 'claude-ultimate-hud-git-cache.json');
 const GIT_CACHE_TTL_MS = 120_000;
 
-function loadGitCache(cwd: string): string | null {
+interface GitCache {
+  cwd: string;
+  timestamp: number;
+  info: GitInfo;
+}
+
+function loadGitCache(cwd: string): GitInfo | null {
   try {
     if (!existsSync(GIT_CACHE_FILE)) return null;
     const raw = readFileSync(GIT_CACHE_FILE, 'utf-8');
-    const content = JSON.parse(raw) as { cwd: string; timestamp: number; branch: string };
+    const content = JSON.parse(raw) as GitCache;
     if (content.cwd !== cwd || Date.now() - content.timestamp > GIT_CACHE_TTL_MS) return null;
-    return content.branch;
+    return content.info;
   } catch {
     return null;
   }
 }
 
-function saveGitCache(cwd: string, branch: string): void {
+function saveGitCache(cwd: string, info: GitInfo): void {
   try {
-    writeFileSync(GIT_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), branch }), { mode: 0o600 });
-  } catch { /* ignore */ }
+    writeFileSync(GIT_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), info }), { mode: 0o600 });
+  } catch {
+    /* ignore */
+  }
 }
 
 function execFileAsync(cmd: string, args: string[], options: Record<string, unknown>): Promise<string> {
@@ -35,32 +44,46 @@ function execFileAsync(cmd: string, args: string[], options: Record<string, unkn
   });
 }
 
-export async function getGitBranch(cwd?: string): Promise<string | undefined> {
+export async function getGitInfo(cwd?: string): Promise<GitInfo | undefined> {
   if (!cwd) return undefined;
 
   const cached = loadGitCache(cwd);
   if (cached) return cached;
 
-  // Validate cwd exists and is a directory
   try {
-    if (!existsSync(cwd) || !statSync(cwd).isDirectory()) {
-      return undefined;
-    }
+    if (!existsSync(cwd) || !statSync(cwd).isDirectory()) return undefined;
   } catch {
     return undefined;
   }
 
   try {
-    const result = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-      cwd,
-      encoding: 'utf-8',
-      timeout: EXEC_TIMEOUT_MS,
-    });
-    const branch = result.trim() || undefined;
-    if (branch) saveGitCache(cwd, branch);
-    return branch;
+    const execOpts = { cwd, encoding: 'utf-8', timeout: EXEC_TIMEOUT_MS };
+
+    // Run all 3 git commands in parallel
+    const [branchResult, statusResult, upstreamResult] = await Promise.all([
+      execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], execOpts),
+      execFileAsync('git', ['--no-optional-locks', 'status', '--porcelain'], execOpts).catch(() => ''),
+      execFileAsync('git', ['rev-list', '--left-right', '--count', '@{upstream}...HEAD'], execOpts).catch(() => ''),
+    ]);
+
+    const branch = branchResult.trim();
+    if (!branch) return undefined;
+
+    const dirty = statusResult.trim().length > 0;
+
+    let ahead = 0;
+    let behind = 0;
+    const parts = upstreamResult.trim().split(/\s+/);
+    if (parts.length === 2) {
+      behind = parseInt(parts[0], 10) || 0;
+      ahead = parseInt(parts[1], 10) || 0;
+    }
+
+    const info: GitInfo = { branch, dirty, ahead, behind };
+    saveGitCache(cwd, info);
+    return info;
   } catch (e) {
-    debugError('git branch', e);
+    debugError('git info', e);
     return undefined;
   }
 }

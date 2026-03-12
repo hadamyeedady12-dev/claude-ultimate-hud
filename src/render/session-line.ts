@@ -1,6 +1,8 @@
 import type { RenderContext, Translations } from '../types.js';
 import { COLORS, RESET, colorize, getColorForPercent, renderProgressBar } from '../utils/colors.js';
 import { formatTokens, formatTimeRemaining, shortenModelName } from '../utils/formatters.js';
+import { dim } from '../utils/colors.js';
+import { CONTEXT_HIGH_THRESHOLD } from '../constants.js';
 
 const SEP = ` ${COLORS.dim}│${RESET} `;
 
@@ -11,14 +13,23 @@ export function renderSessionLine(ctx: RenderContext, t: Translations): string {
   parts.push(`${COLORS.cyan}🤖 ${modelName}${RESET}`);
 
   const usage = ctx.stdin.context_window.current_usage;
-  if (!usage) {
+  const nativePercent = ctx.stdin.used_percentage;
+
+  if (!usage && nativePercent == null) {
     parts.push(colorize(t.errors.no_context, COLORS.dim));
     return parts.join(SEP);
   }
 
-  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+  const currentTokens = usage
+    ? usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens
+    : 0;
   const totalTokens = ctx.stdin.context_window.context_window_size;
-  const percent = Math.min(100, Math.round((currentTokens / totalTokens) * 100));
+
+  // Prefer native percentage if available
+  const percent =
+    nativePercent != null
+      ? Math.min(100, Math.round(nativePercent))
+      : Math.min(100, Math.round((currentTokens / totalTokens) * 100));
 
   parts.push(renderProgressBar(percent));
 
@@ -26,6 +37,19 @@ export function renderSessionLine(ctx: RenderContext, t: Translations): string {
   parts.push(colorize(`${percent}%`, percentColor));
 
   parts.push(`${formatTokens(currentTokens)}/${formatTokens(totalTokens)}`);
+
+  // Token breakdown when high context (≥ 85%)
+  if (
+    percent >= CONTEXT_HIGH_THRESHOLD &&
+    usage &&
+    ctx.config.display?.showTokenBreakdown !== false
+  ) {
+    const inTokens = formatTokens(usage.input_tokens);
+    const cacheTokens = formatTokens(
+      usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
+    );
+    parts.push(dim(`(in: ${inTokens}, cache: ${cacheTokens})`));
+  }
 
   const rateParts = buildRateLimitsSection(ctx, t);
   if (rateParts) {

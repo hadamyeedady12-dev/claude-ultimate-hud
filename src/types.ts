@@ -15,6 +15,14 @@ export interface StdinInput {
   };
   cwd?: string;
   transcript_path?: string;
+  // Native fields from Claude Code stdin
+  used_percentage?: number;
+  remaining_percentage?: number;
+  total_duration_ms?: number;
+  version?: string;
+  total_lines_added?: number;
+  total_lines_removed?: number;
+  output_style?: string;
 }
 
 export interface Config {
@@ -22,6 +30,13 @@ export interface Config {
   plan: 'pro' | 'max100' | 'max200';
   cache: {
     ttlSeconds: number;
+  };
+  display?: {
+    showTools?: boolean;
+    showAgents?: boolean;
+    showTodos?: boolean;
+    showStats?: boolean;
+    showTokenBreakdown?: boolean;
   };
 }
 
@@ -32,6 +47,13 @@ export const DEFAULT_CONFIG: Config = {
     ttlSeconds: 300,
   },
 };
+
+export interface GitInfo {
+  branch: string;
+  dirty: boolean;
+  ahead: number;
+  behind: number;
+}
 
 export interface RateLimitInfo {
   utilization: number;
@@ -91,9 +113,10 @@ export interface RenderContext {
   config: Config;
   transcript: TranscriptData;
   configCounts: ConfigCounts;
-  gitBranch?: string;
+  gitInfo?: GitInfo;
   sessionDuration: string;
   rateLimits: UsageLimits | null;
+  burnRate?: number | null;
 }
 
 export interface Translations {

@@ -8,12 +8,13 @@ import { existsSync, statSync } from 'node:fs';
 import type { StdinInput, Config, RenderContext } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 import { COLORS, colorize } from './utils/colors.js';
-import { formatSessionDuration } from './utils/formatters.js';
+import { formatSessionDuration, formatSessionDurationMs } from './utils/formatters.js';
 import { fetchUsageLimits } from './utils/api-client.js';
 import { countConfigs } from './utils/config-counter.js';
 import { parseTranscript } from './utils/transcript.js';
-import { getGitBranch } from './utils/git.js';
+import { getGitInfo } from './utils/git.js';
 import { getTranslations } from './utils/i18n.js';
+import { trackTokenSpeed } from './utils/speed-tracker.js';
 import { render } from './render/index.js';
 import { debugError } from './utils/errors.js';
 import { STDIN_TIMEOUT_MS } from './constants.js';
@@ -86,8 +87,10 @@ async function main(): Promise<void> {
   }
 
   if (
-    !stdin.model || typeof stdin.model.display_name !== 'string' ||
-    !stdin.context_window || typeof stdin.context_window.context_window_size !== 'number' ||
+    !stdin.model ||
+    typeof stdin.model.display_name !== 'string' ||
+    !stdin.context_window ||
+    typeof stdin.context_window.context_window_size !== 'number' ||
     !stdin.cost
   ) {
     console.log(colorize('⚠️ stdin: missing fields', COLORS.yellow));
@@ -99,24 +102,36 @@ async function main(): Promise<void> {
   const validCwd = isValidDirectory(stdin.cwd ?? '') ? stdin.cwd : undefined;
 
   // Phase 2: Run all independent I/O operations in parallel (including i18n)
-  const [transcript, configCounts, gitBranch, rateLimits, t] = await Promise.all([
+  const [transcript, configCounts, gitInfo, rateLimits, t] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
-    getGitBranch(validCwd),
+    getGitInfo(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
     getTranslations(config),
   ]);
 
-  const sessionDuration = formatSessionDuration(transcript.sessionStart);
+  // Native duration vs transcript-based
+  const sessionDuration =
+    stdin.total_duration_ms != null
+      ? formatSessionDurationMs(stdin.total_duration_ms)
+      : formatSessionDuration(transcript.sessionStart);
+
+  // Burn rate tracking
+  const usage = stdin.context_window.current_usage;
+  const currentTokens = usage
+    ? usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens
+    : 0;
+  const burnRate = currentTokens > 0 ? trackTokenSpeed(currentTokens) : null;
 
   const ctx: RenderContext = {
     stdin,
     config,
     transcript,
     configCounts,
-    gitBranch,
+    gitInfo,
     sessionDuration,
     rateLimits,
+    burnRate,
   };
 
   render(ctx, t);

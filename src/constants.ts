@@ -7,6 +7,9 @@ export const COLOR_THRESHOLD_WARNING = 50;
 /** Color threshold: yellow → red */
 export const COLOR_THRESHOLD_DANGER = 80;
 
+/** Context % threshold for showing token breakdown */
+export const CONTEXT_HIGH_THRESHOLD = 85;
+
 /** Max running tools to display */
 export const MAX_RUNNING_TOOLS = 2;
 
@@ -39,3 +42,18 @@ export const EXEC_TIMEOUT_MS = 3000;
 
 /** Timeout for API requests in milliseconds */
 export const API_TIMEOUT_MS = 5000;
+
+/** Max age for stale cache fallback in seconds */
+export const STALE_CACHE_MAX_AGE_S = 3600;
+
+/** TTL for negative (error) cache in seconds */
+export const NEGATIVE_CACHE_TTL_S = 30;
+
+/** Stale lock auto-cleanup threshold in seconds */
+export const LOCK_STALE_S = 30;
+
+/** Max wait time for lock acquisition in milliseconds */
+export const LOCK_WAIT_MS = 2000;
+
+/** Burn rate calculation window in milliseconds */
+export const BURN_RATE_WINDOW_MS = 120_000;
