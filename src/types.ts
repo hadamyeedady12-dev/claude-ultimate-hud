@@ -86,12 +86,6 @@ export interface TranscriptData {
   skillCallCount: number;
 }
 
-export interface OmcState {
-  ralph?: { active: boolean; iteration: number; maxIterations: number };
-  ultrawork?: { active: boolean };
-  autopilot?: { active: boolean; phase: string; iteration: number; maxIterations: number };
-}
-
 export interface RenderContext {
   stdin: StdinInput;
   config: Config;
@@ -100,7 +94,6 @@ export interface RenderContext {
   gitBranch?: string;
   sessionDuration: string;
   rateLimits: UsageLimits | null;
-  omcState: OmcState;
 }
 
 export interface Translations {
@@ -126,7 +119,7 @@ export interface Translations {
   todos: {
     allComplete: string;
   };
-  omc: {
+  stats: {
     thinking: string;
   };
 }

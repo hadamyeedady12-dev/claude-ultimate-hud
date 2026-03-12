@@ -1,8 +1,11 @@
-/** Token buffer added to current usage to account for autocompact overhead */
-export const AUTOCOMPACT_BUFFER = 0;
-
 /** Width of the progress bar in terminal characters */
 export const PROGRESS_BAR_WIDTH = 10;
+
+/** Color threshold: green → yellow */
+export const COLOR_THRESHOLD_WARNING = 50;
+
+/** Color threshold: yellow → red */
+export const COLOR_THRESHOLD_DANGER = 80;
 
 /** Max running tools to display */
 export const MAX_RUNNING_TOOLS = 2;

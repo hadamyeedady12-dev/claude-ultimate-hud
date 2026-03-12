@@ -25,7 +25,7 @@ const EN: Translations = {
   todos: {
     allComplete: 'All todos complete',
   },
-  omc: {
+  stats: {
     thinking: 'thinking',
   },
 };
@@ -53,7 +53,7 @@ const KO: Translations = {
   todos: {
     allComplete: '모든 할 일 완료',
   },
-  omc: {
+  stats: {
     thinking: '사고 중',
   },
 };

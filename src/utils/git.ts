@@ -6,7 +6,7 @@ import { debugError } from './errors.js';
 import { EXEC_TIMEOUT_MS } from '../constants.js';
 
 const GIT_CACHE_FILE = join(homedir(), '.claude', 'claude-ultimate-hud-git-cache.json');
-const GIT_CACHE_TTL_MS = 30_000;
+const GIT_CACHE_TTL_MS = 120_000;
 
 function loadGitCache(cwd: string): string | null {
   try {

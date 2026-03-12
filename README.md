@@ -22,6 +22,16 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
+### v1.4.0 - 코드 경량화 & 품질 개선
+- 🗑️ **OMC 코드 완전 제거**: ralph/autopilot/ultrawork 상태 추적 삭제, `omc-state.ts` 제거 (번들 39.8KB → 36.9KB, -7.3%)
+- 🛡️ **stdin 입력 검증**: 필수 필드 누락 시 `⚠️ stdin: missing fields` 명확한 에러 출력
+- 🔢 **토큰 포맷 정밀도 개선**: 950K 이상은 M 표기로 전환 (`999K` → `1.0M`)
+- 🎯 **색상 임계값 상수화**: 매직넘버 50/80 → `COLOR_THRESHOLD_WARNING/DANGER`로 통합
+- 🧹 **AUTOCOMPACT_BUFFER 제거**: 값이 0인 무의미한 상수 삭제
+- 🔍 **디버그 트레이스 추가**: `CLAUDE_HUD_DEBUG=1` 시 cache hit/miss, keychain/file 소스 추적
+- 🔒 **strict perms 모드**: `CLAUDE_HUD_STRICT_PERMS=1` 시 insecure 파일 권한 거부
+- 📦 **API beta 헤더 상수화**: 하드코딩 → `ANTHROPIC_BETA_HEADER`
+
 ### v1.3.1 - 60배 성능 개선
 - 🔥 **clearTimeout 버그 수정**: `readStdin()`의 setTimeout 핸들 미해제로 프로세스가 타이머 만료까지 2~5초 대기하던 핵심 버그 수정
 - ⚡ **config-counter 파일 캐시** (60초 TTL): 매 호출 15+ sync FS 호출 → 캐시 hit 시 1회 read
@@ -43,15 +53,13 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 
 ```
 🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일: 전체 18% │ 소넷 1%
-🔄 ralph:3/10 │ ⚡ ultrawork │ 💭 thinking │ T:42 A:5 S:2
+💭 사고 중 │ 🎯 skill:commit │ T:42 A:5 S:2
 📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: 패턴 찾는 중... │ ✓ librarian (2s)
 ▸ 인증 플로우 구현 (2/5)
 ⚠️ 컨텍스트 85% - /compact 권장
 ```
-
-> **참고**: OMC(oh-my-claudecode) 미사용 시 OMC 모드 라인은 표시되지 않습니다. 컨텍스트 경고, thinking 표시, 호출 카운트는 모든 사용자에게 동작합니다.
 
 ## 설치
 
@@ -134,6 +142,18 @@ bun install && bun run build
 [OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
 ## 변경 이력
+
+### v1.4.0
+- 🗑️ **OMC 코드 완전 제거** (번들 39.8KB → 36.9KB, -7.3%)
+  - `omc-state.ts` 삭제, ralph/autopilot/ultrawork 추적 코드 제거
+  - thinking/skill/count는 `renderStatsLine`으로 유지
+- 🛡️ **stdin 입력 검증**: 필수 필드(`model`, `context_window`, `cost`) 누락 시 명확한 에러
+- 🔢 **토큰 포맷 개선**: 950K+ → M 표기 (`999K` → `1.0M`)
+- 🎯 **매직넘버 상수화**: 색상 임계값 50/80 → `COLOR_THRESHOLD_WARNING/DANGER`
+- 🧹 **AUTOCOMPACT_BUFFER 제거**: 효과 없는 상수(값 0) 삭제
+- 🔍 **디버그 트레이스**: `debugTrace()` 추가 — cache hit/miss, credential 소스 추적
+- 🔒 **strict perms**: `CLAUDE_HUD_STRICT_PERMS=1`로 insecure 파일 권한 거부
+- 📦 **API beta 헤더 상수화**: `ANTHROPIC_BETA_HEADER`로 추출
 
 ### v1.3.1
 - 🔥 **60배 성능 개선** (2.0초 → 0.033초)

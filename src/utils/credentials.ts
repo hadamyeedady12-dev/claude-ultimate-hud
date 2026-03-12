@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { debugError } from './errors.js';
+import { debugError, debugTrace } from './errors.js';
 import { EXEC_TIMEOUT_MS } from '../constants.js';
 
 function execFileAsync(cmd: string, args: string[], options: Record<string, unknown>): Promise<string> {
@@ -34,9 +34,11 @@ async function getCredentialsFromKeychain(): Promise<string | null> {
     );
 
     const creds = JSON.parse(result.trim());
+    debugTrace('cred', 'keychain ok');
     return creds?.claudeAiOauth?.accessToken ?? null;
   } catch (e) {
     debugError('keychain read', e);
+    debugTrace('cred', 'file fallback');
     return await getCredentialsFromFile();
   }
 }
@@ -51,6 +53,7 @@ async function getCredentialsFromFile(): Promise<string | null> {
       process.stderr.write(
         `[claude-ultimate-hud] WARNING: ${credPath} has insecure permissions (${(fileStat.mode & 0o777).toString(8)}). Expected 0600.\n`
       );
+      if (process.env.CLAUDE_HUD_STRICT_PERMS === '1') return null;
     }
 
     const content = await readFile(credPath, 'utf-8');

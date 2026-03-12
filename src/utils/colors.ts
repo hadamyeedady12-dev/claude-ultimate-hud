@@ -38,13 +38,13 @@ export function magenta(text: string): string {
   return colorize(text, COLORS.magenta);
 }
 
+import { PROGRESS_BAR_WIDTH, COLOR_THRESHOLD_WARNING, COLOR_THRESHOLD_DANGER } from '../constants.js';
+
 export function getColorForPercent(percent: number): string {
-  if (percent <= 50) return COLORS.green;
-  if (percent <= 80) return COLORS.yellow;
+  if (percent <= COLOR_THRESHOLD_WARNING) return COLORS.green;
+  if (percent <= COLOR_THRESHOLD_DANGER) return COLORS.yellow;
   return COLORS.red;
 }
-
-import { PROGRESS_BAR_WIDTH } from '../constants.js';
 
 export function renderProgressBar(percent: number, width = PROGRESS_BAR_WIDTH): string {
   const filled = Math.round((percent / 100) * width);

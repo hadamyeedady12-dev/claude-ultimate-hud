@@ -4,35 +4,21 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type { UsageLimits } from '../types.js';
 import { getCredentials } from './credentials.js';
-import { debugError } from './errors.js';
+import { debugError, debugTrace } from './errors.js';
 import { API_TIMEOUT_MS } from '../constants.js';
+
 const CACHE_DIR = path.join(os.homedir(), '.claude');
 const CACHE_FILE = path.join(CACHE_DIR, 'claude-ultimate-hud-cache.json');
-
-interface CacheEntry {
-  data: UsageLimits;
-  timestamp: number;
-}
-
-let usageCache: CacheEntry | null = null;
-
-function isCacheValid(ttlSeconds: number): boolean {
-  if (!usageCache) return false;
-  const ageSeconds = (Date.now() - usageCache.timestamp) / 1000;
-  return ageSeconds < ttlSeconds;
-}
+const ANTHROPIC_BETA_HEADER = 'oauth-2025-04-20';
 
 export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | null> {
-  if (isCacheValid(ttlSeconds) && usageCache) {
-    return usageCache.data;
-  }
-
   const fileCache = loadFileCache(ttlSeconds);
   if (fileCache) {
-    usageCache = { data: fileCache, timestamp: Date.now() };
+    debugTrace('api', 'file cache hit');
     return fileCache;
   }
 
+  debugTrace('api', 'cache expired, fetching');
   let token: string | null = await getCredentials();
   if (!token) return null;
 
@@ -47,14 +33,12 @@ export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | n
         'Content-Type': 'application/json',
         'User-Agent': 'claude-ultimate-hud/1.0.0',
         Authorization: `Bearer ${token}`,
-        'anthropic-beta': 'oauth-2025-04-20',
+        'anthropic-beta': ANTHROPIC_BETA_HEADER,
       },
       signal: controller.signal,
     });
 
-    // Clear token from memory after use
     token = null;
-
     clearTimeout(timeout);
 
     if (!response.ok) return null;
@@ -67,12 +51,11 @@ export async function fetchUsageLimits(ttlSeconds = 60): Promise<UsageLimits | n
       seven_day_sonnet: data.seven_day_sonnet,
     };
 
-    usageCache = { data: limits, timestamp: Date.now() };
     saveFileCache(limits);
+    debugTrace('api', 'fetch ok');
 
     return limits;
   } catch (e) {
-    // Clear token on error as well
     token = null;
     debugError('API fetch', e);
     return null;

@@ -14,7 +14,6 @@ import { countConfigs } from './utils/config-counter.js';
 import { parseTranscript } from './utils/transcript.js';
 import { getGitBranch } from './utils/git.js';
 import { getTranslations } from './utils/i18n.js';
-import { readOmcState } from './utils/omc-state.js';
 import { render } from './render/index.js';
 import { debugError } from './utils/errors.js';
 import { STDIN_TIMEOUT_MS } from './constants.js';
@@ -86,17 +85,25 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (
+    !stdin.model || typeof stdin.model.display_name !== 'string' ||
+    !stdin.context_window || typeof stdin.context_window.context_window_size !== 'number' ||
+    !stdin.cost
+  ) {
+    console.log(colorize('⚠️ stdin: missing fields', COLORS.yellow));
+    return;
+  }
+
   const transcriptPath = stdin.transcript_path ?? '';
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : '';
   const validCwd = isValidDirectory(stdin.cwd ?? '') ? stdin.cwd : undefined;
 
   // Phase 2: Run all independent I/O operations in parallel (including i18n)
-  const [transcript, configCounts, gitBranch, rateLimits, omcState, t] = await Promise.all([
+  const [transcript, configCounts, gitBranch, rateLimits, t] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitBranch(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
-    readOmcState(validCwd),
     getTranslations(config),
   ]);
 
@@ -110,7 +117,6 @@ async function main(): Promise<void> {
     gitBranch,
     sessionDuration,
     rateLimits,
-    omcState,
   };
 
   render(ctx, t);

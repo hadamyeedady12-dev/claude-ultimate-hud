@@ -22,6 +22,16 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🤖 **Agent Status**: Subagent progress tracking
 - ✅ **Todo Progress**: Current task and completion rate
 
+### v1.4.0 - Code Cleanup & Quality
+- 🗑️ **Remove OMC Code**: Removed ralph/autopilot/ultrawork tracking, deleted `omc-state.ts` (bundle 39.8KB → 36.9KB, -7.3%)
+- 🛡️ **Stdin Validation**: Clear `⚠️ stdin: missing fields` error on missing required fields
+- 🔢 **Token Format Precision**: Values ≥950K now show in M notation (`999K` → `1.0M`)
+- 🎯 **Constants Consolidation**: Color thresholds 50/80 → `COLOR_THRESHOLD_WARNING/DANGER`
+- 🧹 **Remove AUTOCOMPACT_BUFFER**: Removed no-op constant (value was 0)
+- 🔍 **Debug Trace Logging**: `debugTrace()` for cache hit/miss, credential source tracking
+- 🔒 **Strict Perms Mode**: `CLAUDE_HUD_STRICT_PERMS=1` rejects insecure file permissions
+- 📦 **API Beta Header Constant**: Extracted to `ANTHROPIC_BETA_HEADER`
+
 ### v1.3.1 - 60x Performance Improvement
 - 🔥 **clearTimeout Bug Fix**: `readStdin()` setTimeout handle was never cleared after success, blocking process exit for 2-5 seconds
 - ⚡ **Config-counter File Cache** (60s TTL): Eliminates 15+ sync FS calls per invocation
@@ -43,15 +53,13 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 
 ```
 🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5h: 12% (3h59m) │ 7d: all 18% │ Sonnet 1%
-🔄 ralph:3/10 │ ⚡ ultrawork │ 💭 thinking │ T:42 A:5 S:2
+💭 thinking │ 🎯 skill:commit │ T:42 A:5 S:2
 📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: Finding patterns... │ ✓ librarian (2s)
 ▸ Implement auth flow (2/5)
 ⚠️ Context 85% - consider /compact
 ```
-
-> **Note**: The OMC mode line only appears when oh-my-claudecode is active. Context warnings, thinking indicator, and call counters work for all users.
 
 ## Installation
 
@@ -134,6 +142,18 @@ Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
 Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
 ## Changelog
+
+### v1.4.0
+- 🗑️ **Remove OMC Code** (bundle 39.8KB → 36.9KB, -7.3%)
+  - Deleted `omc-state.ts`, removed ralph/autopilot/ultrawork tracking
+  - Thinking/skill/count preserved in `renderStatsLine`
+- 🛡️ **Stdin Validation**: Clear error on missing required fields (`model`, `context_window`, `cost`)
+- 🔢 **Token Format Fix**: ≥950K uses M notation (`999K` → `1.0M`)
+- 🎯 **Constants**: Color thresholds → `COLOR_THRESHOLD_WARNING/DANGER`
+- 🧹 **Remove AUTOCOMPACT_BUFFER**: No-op constant (value 0) removed
+- 🔍 **Debug Trace**: `debugTrace()` for cache hit/miss, credential source
+- 🔒 **Strict Perms**: `CLAUDE_HUD_STRICT_PERMS=1` rejects insecure credential files
+- 📦 **API Beta Header**: Extracted to `ANTHROPIC_BETA_HEADER` constant
 
 ### v1.3.1
 - 🔥 **60x Performance Improvement** (2.0s → 0.033s)

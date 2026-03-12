@@ -2,9 +2,9 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join6, isAbsolute, resolve as resolve2, sep } from "node:path";
+import { join as join5, isAbsolute, resolve as resolve2, sep } from "node:path";
 import { homedir as homedir5 } from "node:os";
-import { existsSync as existsSync5, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync4, statSync as statSync3 } from "node:fs";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
@@ -16,8 +16,9 @@ var DEFAULT_CONFIG = {
 };
 
 // src/constants.ts
-var AUTOCOMPACT_BUFFER = 0;
 var PROGRESS_BAR_WIDTH = 10;
+var COLOR_THRESHOLD_WARNING = 50;
+var COLOR_THRESHOLD_DANGER = 80;
 var MAX_RUNNING_TOOLS = 2;
 var MAX_COMPLETED_TOOL_TYPES = 4;
 var MAX_AGENTS_DISPLAY = 3;
@@ -60,9 +61,9 @@ function magenta(text) {
   return colorize(text, COLORS.magenta);
 }
 function getColorForPercent(percent) {
-  if (percent <= 50)
+  if (percent <= COLOR_THRESHOLD_WARNING)
     return COLORS.green;
-  if (percent <= 80)
+  if (percent <= COLOR_THRESHOLD_DANGER)
     return COLORS.yellow;
   return COLORS.red;
 }
@@ -76,7 +77,7 @@ function renderProgressBar(percent, width = PROGRESS_BAR_WIDTH) {
 // src/utils/formatters.ts
 import path from "node:path";
 function formatTokens(n) {
-  if (n >= 1e6)
+  if (n >= 950000)
     return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1000)
     return `${Math.round(n / 1000)}K`;
@@ -144,7 +145,13 @@ function debugError(context, error) {
   if (!IS_DEBUG)
     return;
   const msg = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`[claude-ultimate-hud] ${context}: ${msg}
+  process.stderr.write(`[HUD ERROR] ${context}: ${msg}
+`);
+}
+function debugTrace(label, msg) {
+  if (!IS_DEBUG)
+    return;
+  process.stderr.write(`[HUD TRACE] ${label}: ${msg}
 `);
 }
 
@@ -173,9 +180,11 @@ async function getCredentialsFromKeychain() {
   try {
     const result = await execFileAsync("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"], { encoding: "utf-8", timeout: EXEC_TIMEOUT_MS });
     const creds = JSON.parse(result.trim());
+    debugTrace("cred", "keychain ok");
     return creds?.claudeAiOauth?.accessToken ?? null;
   } catch (e) {
     debugError("keychain read", e);
+    debugTrace("cred", "file fallback");
     return await getCredentialsFromFile();
   }
 }
@@ -186,6 +195,8 @@ async function getCredentialsFromFile() {
     if ((fileStat.mode & 63) !== 0) {
       process.stderr.write(`[claude-ultimate-hud] WARNING: ${credPath} has insecure permissions (${(fileStat.mode & 511).toString(8)}). Expected 0600.
 `);
+      if (process.env.CLAUDE_HUD_STRICT_PERMS === "1")
+        return null;
     }
     const content = await readFile(credPath, "utf-8");
     const creds = JSON.parse(content);
@@ -199,22 +210,14 @@ async function getCredentialsFromFile() {
 // src/utils/api-client.ts
 var CACHE_DIR = path2.join(os.homedir(), ".claude");
 var CACHE_FILE = path2.join(CACHE_DIR, "claude-ultimate-hud-cache.json");
-var usageCache = null;
-function isCacheValid(ttlSeconds) {
-  if (!usageCache)
-    return false;
-  const ageSeconds = (Date.now() - usageCache.timestamp) / 1000;
-  return ageSeconds < ttlSeconds;
-}
+var ANTHROPIC_BETA_HEADER = "oauth-2025-04-20";
 async function fetchUsageLimits(ttlSeconds = 60) {
-  if (isCacheValid(ttlSeconds) && usageCache) {
-    return usageCache.data;
-  }
   const fileCache = loadFileCache(ttlSeconds);
   if (fileCache) {
-    usageCache = { data: fileCache, timestamp: Date.now() };
+    debugTrace("api", "file cache hit");
     return fileCache;
   }
+  debugTrace("api", "cache expired, fetching");
   let token = await getCredentials();
   if (!token)
     return null;
@@ -228,7 +231,7 @@ async function fetchUsageLimits(ttlSeconds = 60) {
         "Content-Type": "application/json",
         "User-Agent": "claude-ultimate-hud/1.0.0",
         Authorization: `Bearer ${token}`,
-        "anthropic-beta": "oauth-2025-04-20"
+        "anthropic-beta": ANTHROPIC_BETA_HEADER
       },
       signal: controller.signal
     });
@@ -242,8 +245,8 @@ async function fetchUsageLimits(ttlSeconds = 60) {
       seven_day: data.seven_day,
       seven_day_sonnet: data.seven_day_sonnet
     };
-    usageCache = { data: limits, timestamp: Date.now() };
     saveFileCache(limits);
+    debugTrace("api", "fetch ok");
     return limits;
   } catch (e) {
     token = null;
@@ -710,7 +713,7 @@ import { existsSync as existsSync3, statSync as statSync2, readFileSync as readF
 import { join as join4 } from "node:path";
 import { homedir as homedir4 } from "node:os";
 var GIT_CACHE_FILE = join4(homedir4(), ".claude", "claude-ultimate-hud-git-cache.json");
-var GIT_CACHE_TTL_MS = 30000;
+var GIT_CACHE_TTL_MS = 120000;
 function loadGitCache(cwd) {
   try {
     if (!existsSync3(GIT_CACHE_FILE))
@@ -793,7 +796,7 @@ var EN = {
   todos: {
     allComplete: "All todos complete"
   },
-  omc: {
+  stats: {
     thinking: "thinking"
   }
 };
@@ -820,7 +823,7 @@ var KO = {
   todos: {
     allComplete: "모든 할 일 완료"
   },
-  omc: {
+  stats: {
     thinking: "사고 중"
   }
 };
@@ -859,91 +862,6 @@ async function getTranslations(config) {
   return lang === "ko" ? KO : EN;
 }
 
-// src/utils/omc-state.ts
-import { existsSync as existsSync4, statSync as statSync3, readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
-import { join as join5 } from "node:path";
-var STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
-function readJsonFile2(filePath) {
-  try {
-    if (!existsSync4(filePath))
-      return null;
-    const stat2 = statSync3(filePath);
-    if (!stat2.isFile() || Date.now() - stat2.mtimeMs > STALE_THRESHOLD_MS)
-      return null;
-    return JSON.parse(readFileSync4(filePath, "utf-8"));
-  } catch {
-    return null;
-  }
-}
-function findSessionStateDir(omcStateDir) {
-  const sessionsDir = join5(omcStateDir, "sessions");
-  try {
-    if (!existsSync4(sessionsDir))
-      return null;
-    const entries = readdirSync2(sessionsDir, { withFileTypes: true });
-    let latest = null;
-    for (const entry of entries) {
-      if (!entry.isDirectory())
-        continue;
-      try {
-        const mtime = statSync3(join5(sessionsDir, entry.name)).mtimeMs;
-        if (!latest || mtime > latest.mtime) {
-          latest = { name: entry.name, mtime };
-        }
-      } catch {}
-    }
-    return latest ? join5(sessionsDir, latest.name) : null;
-  } catch {
-    return null;
-  }
-}
-function readStateFile(cwd, filename) {
-  const omcStateDir = join5(cwd, ".omc", "state");
-  const sessionDir = findSessionStateDir(omcStateDir);
-  if (sessionDir) {
-    const data2 = readJsonFile2(join5(sessionDir, filename));
-    if (data2)
-      return data2;
-  }
-  const data = readJsonFile2(join5(omcStateDir, filename));
-  if (data)
-    return data;
-  return readJsonFile2(join5(cwd, ".omc", filename));
-}
-async function readOmcState(cwd) {
-  const state = {};
-  if (!cwd)
-    return state;
-  if (!existsSync4(join5(cwd, ".omc")))
-    return state;
-  try {
-    const ralph = readStateFile(cwd, "ralph-state.json");
-    if (ralph?.active) {
-      state.ralph = {
-        active: true,
-        iteration: ralph.iteration ?? 0,
-        maxIterations: ralph.max_iterations ?? 0
-      };
-    }
-    const ultrawork = readStateFile(cwd, "ultrawork-state.json");
-    if (ultrawork?.active) {
-      state.ultrawork = { active: true };
-    }
-    const autopilot = readStateFile(cwd, "autopilot-state.json");
-    if (autopilot?.active) {
-      state.autopilot = {
-        active: true,
-        phase: autopilot.current_phase ?? "",
-        iteration: autopilot.iteration ?? 0,
-        maxIterations: autopilot.max_iterations ?? 0
-      };
-    }
-  } catch (e) {
-    debugError("omc-state read", e);
-  }
-  return state;
-}
-
 // src/render/session-line.ts
 var SEP = ` ${COLORS.dim}│${RESET} `;
 function renderSessionLine(ctx, t) {
@@ -955,9 +873,8 @@ function renderSessionLine(ctx, t) {
     parts.push(colorize(t.errors.no_context, COLORS.dim));
     return parts.join(SEP);
   }
-  const baseTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
   const totalTokens = ctx.stdin.context_window.context_window_size;
-  const currentTokens = baseTokens + AUTOCOMPACT_BUFFER;
   const percent = Math.min(100, Math.round(currentTokens / totalTokens * 100));
   parts.push(renderProgressBar(percent));
   const percentColor = getColorForPercent(percent);
@@ -1112,24 +1029,11 @@ function renderTodosLine(ctx, t) {
 }
 
 // src/render/omc-line.ts
-function renderOmcLine(ctx, t) {
+function renderStatsLine(ctx, t) {
   const parts = [];
-  const omc = ctx.omcState;
   const tr = ctx.transcript;
-  if (omc.ralph?.active) {
-    const iter = omc.ralph.maxIterations > 0 ? `${omc.ralph.iteration}/${omc.ralph.maxIterations}` : `${omc.ralph.iteration}`;
-    parts.push(`${COLORS.cyan}\uD83D\uDD04 ralph:${iter}${RESET}`);
-  }
-  if (omc.autopilot?.active) {
-    const phase = omc.autopilot.phase || "?";
-    const iter = omc.autopilot.maxIterations > 0 ? `(${omc.autopilot.iteration}/${omc.autopilot.maxIterations})` : "";
-    parts.push(`${COLORS.green}\uD83E\uDD16 autopilot:${phase}${iter}${RESET}`);
-  }
-  if (omc.ultrawork?.active) {
-    parts.push(`${COLORS.yellow}⚡ ultrawork${RESET}`);
-  }
   if (tr.isThinking) {
-    parts.push(`${COLORS.magenta}\uD83D\uDCAD ${t.omc.thinking}${RESET}`);
+    parts.push(`${COLORS.magenta}\uD83D\uDCAD ${t.stats.thinking}${RESET}`);
   }
   if (tr.lastSkill) {
     parts.push(`${COLORS.cyan}\uD83C\uDFAF skill:${tr.lastSkill.name}${RESET}`);
@@ -1152,11 +1056,10 @@ function renderContextWarning(ctx, t) {
   const usage = ctx.stdin.context_window.current_usage;
   if (!usage)
     return "";
-  const baseTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+  const currentTokens = usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
   const totalTokens = ctx.stdin.context_window.context_window_size;
   if (totalTokens <= 0)
     return "";
-  const currentTokens = baseTokens + AUTOCOMPACT_BUFFER;
   const percent = Math.min(100, Math.round(currentTokens / totalTokens * 100));
   if (percent >= 90) {
     const template = t.contextWarning?.critical ?? "Context {pct}% - /compact recommended!";
@@ -1173,7 +1076,7 @@ function renderContextWarning(ctx, t) {
 function render(ctx, t) {
   const lines = [
     renderSessionLine(ctx, t),
-    renderOmcLine(ctx, t),
+    renderStatsLine(ctx, t),
     renderProjectLine(ctx),
     renderToolsLine(ctx),
     renderAgentsLine(ctx),
@@ -1186,12 +1089,12 @@ function render(ctx, t) {
 }
 
 // src/index.ts
-var CONFIG_PATH = join6(homedir5(), ".claude", "claude-ultimate-hud.local.json");
+var CONFIG_PATH = join5(homedir5(), ".claude", "claude-ultimate-hud.local.json");
 function isValidDirectory(p) {
   if (!p || !isAbsolute(p))
     return false;
   try {
-    return existsSync5(p) && statSync4(p).isDirectory();
+    return existsSync4(p) && statSync3(p).isDirectory();
   } catch {
     return false;
   }
@@ -1201,10 +1104,10 @@ function isValidTranscriptPath(p) {
     return true;
   if (!isAbsolute(p))
     return false;
-  const claudeDir = join6(homedir5(), ".claude");
+  const claudeDir = join5(homedir5(), ".claude");
   try {
     const resolved = resolve2(p);
-    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync5(resolved);
+    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync4(resolved);
   } catch {
     return false;
   }
@@ -1246,15 +1149,18 @@ async function main() {
     console.log(colorize("⚠️ stdin", COLORS.yellow));
     return;
   }
+  if (!stdin.model || typeof stdin.model.display_name !== "string" || !stdin.context_window || typeof stdin.context_window.context_window_size !== "number" || !stdin.cost) {
+    console.log(colorize("⚠️ stdin: missing fields", COLORS.yellow));
+    return;
+  }
   const transcriptPath = stdin.transcript_path ?? "";
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : "";
   const validCwd = isValidDirectory(stdin.cwd ?? "") ? stdin.cwd : undefined;
-  const [transcript, configCounts, gitBranch, rateLimits, omcState, t] = await Promise.all([
+  const [transcript, configCounts, gitBranch, rateLimits, t] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitBranch(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
-    readOmcState(validCwd),
     getTranslations(config)
   ]);
   const sessionDuration = formatSessionDuration(transcript.sessionStart);
@@ -1265,8 +1171,7 @@ async function main() {
     configCounts,
     gitBranch,
     sessionDuration,
-    rateLimits,
-    omcState
+    rateLimits
   };
   render(ctx, t);
 }
