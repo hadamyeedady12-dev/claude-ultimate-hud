@@ -22,6 +22,21 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
+### v1.5.0 - API 안정성 & 확장 기능
+- 🔒 **User-Agent 수정**: `claude-code/2.1`로 변경하여 Anthropic API 429 방지
+- 🔄 **429 retry-after**: `retry-after` 헤더 읽고 ≤10초 시 1회 재시도, 실패 시 stale 캐시 반환
+- ❄️ **Negative caching**: API 에러 시 30초 TTL 에러 캐시로 에러 폭풍 방지
+- 🔐 **Stampede prevention**: 파일 기반 exclusive lock으로 동시 API 호출 방지
+- 📊 **네이티브 context % 우선**: `stdin.used_percentage` 있으면 우선 사용 (더 정확)
+- ⏱️ **네이티브 세션 시간 우선**: `stdin.total_duration_ms` 있으면 우선 사용
+- 🌿 **Git 확장**: dirty 마커(`*`), ahead/behind(`↑N ↓N`), 3개 git 명령 병렬 실행
+- 🔥 **Burn rate**: 최근 2분 기준 토큰 소비 속도 (`🔥 12K tok/min`)
+- 📝 **Lines changed**: 코드 변경량 표시 (`+42 -8`)
+- 🔍 **Token breakdown**: context ≥ 85% 시 토큰 상세 (`in: 150K, cache: 32K`)
+- 📋 **TaskCreate/TaskUpdate**: 신규 Claude Code 태스크 도구 지원
+- 📏 **터미널 너비 인식**: ANSI 인식 문자열 자르기, CJK/이모지 2칸 계산
+- ⚙️ **위젯 토글**: `config.display`로 개별 위젯 표시/숨김 설정
+
 ### v1.4.0 - 코드 경량화 & 품질 개선
 - 🗑️ **OMC 코드 완전 제거**: ralph/autopilot/ultrawork 상태 추적 삭제, `omc-state.ts` 제거 (번들 39.8KB → 36.9KB, -7.3%)
 - 🛡️ **stdin 입력 검증**: 필수 필드 누락 시 `⚠️ stdin: missing fields` 명확한 에러 출력
@@ -53,12 +68,18 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 
 ```
 🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일: 전체 18% │ 소넷 1%
-💭 사고 중 │ 🎯 skill:commit │ T:42 A:5 S:2
-📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
+💭 사고 중 │ 🎯 skill:commit │ T:42 A:5 S:2 │ 🔥 12K tok/min │ +156 -42
+📁 my-project git:(main* ↑2) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: 패턴 찾는 중... │ ✓ librarian (2s)
 ▸ 인증 플로우 구현 (2/5)
 ⚠️ 컨텍스트 85% - /compact 권장
+```
+
+**고컨텍스트 시 토큰 상세:**
+```
+🤖 Opus 4.6 │ █████████░ 91% │ 182K/200K │ (in: 150K, cache: 32K) │ 5시간: 49% (1시39분)
+🔴 컨텍스트 91% - /compact 필요!
 ```
 
 ## 설치
@@ -141,7 +162,35 @@ bun install && bun run build
 
 [OhMyOpenCode](https://github.com/anthropics/claude-code)로 제작되었습니다.
 
+## 설정 옵션
+
+`~/.claude/claude-ultimate-hud.local.json` 파일에서 위젯별 표시/숨김을 설정할 수 있습니다:
+
+```json
+{
+  "display": {
+    "showTools": true,
+    "showAgents": true,
+    "showTodos": true,
+    "showStats": true,
+    "showTokenBreakdown": true
+  }
+}
+```
+
 ## 변경 이력
+
+### v1.5.0
+- 🔒 **API 안정성**: User-Agent `claude-code/2.1`, 429 retry-after, stale cache fallback, negative caching, stampede lock
+- 🌿 **Git 확장**: dirty(`*`), ahead/behind(`↑N ↓N`), `Promise.all` 병렬 실행
+- 📊 **네이티브 stdin 우선**: `used_percentage`, `total_duration_ms` 우선 사용
+- 🔥 **Burn rate**: `🔥 12K tok/min` (2분 슬라이딩 윈도우)
+- 📝 **Lines changed**: `+42 -8` (stdin.total_lines_added/removed)
+- 🔍 **Token breakdown**: context ≥ 85% 시 `(in: 150K, cache: 32K)`
+- 📋 **TaskCreate/TaskUpdate**: 신규 Claude Code 태스크 도구 지원 (상태 정규화)
+- 📏 **터미널 너비 인식**: `stripAnsi()`, `visualWidth()`, `sliceVisible()` CJK/이모지 대응
+- ⚙️ **위젯 토글**: `config.display`로 개별 위젯 표시/숨김 설정
+- 📦 **신규 파일**: `speed-tracker.ts` (토큰 속도 추적)
 
 ### v1.4.0
 - 🗑️ **OMC 코드 완전 제거** (번들 39.8KB → 36.9KB, -7.3%)

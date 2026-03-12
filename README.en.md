@@ -22,6 +22,21 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🤖 **Agent Status**: Subagent progress tracking
 - ✅ **Todo Progress**: Current task and completion rate
 
+### v1.5.0 - API Stability & Extended Features
+- 🔒 **User-Agent Fix**: Changed to `claude-code/2.1` to prevent Anthropic API 429 errors
+- 🔄 **429 retry-after**: Reads `retry-after` header, retries once if ≤10s, stale cache fallback
+- ❄️ **Negative Caching**: Caches errors with 30s TTL to prevent error storms
+- 🔐 **Stampede Prevention**: File-based exclusive lock prevents concurrent API calls
+- 📊 **Native Context % Priority**: Uses `stdin.used_percentage` when available (more accurate)
+- ⏱️ **Native Session Duration**: Uses `stdin.total_duration_ms` when available
+- 🌿 **Git Extensions**: Dirty marker (`*`), ahead/behind (`↑N ↓N`), 3 git commands in parallel
+- 🔥 **Burn Rate**: Token consumption speed over last 2min (`🔥 12K tok/min`)
+- 📝 **Lines Changed**: Shows code modifications (`+42 -8`)
+- 🔍 **Token Breakdown**: Detailed tokens at ≥85% context (`in: 150K, cache: 32K`)
+- 📋 **TaskCreate/TaskUpdate**: Support for new Claude Code task tools
+- 📏 **Terminal Width Awareness**: ANSI-safe string slicing, CJK/emoji double-width
+- ⚙️ **Widget Toggles**: `config.display` for individual widget show/hide
+
 ### v1.4.0 - Code Cleanup & Quality
 - 🗑️ **Remove OMC Code**: Removed ralph/autopilot/ultrawork tracking, deleted `omc-state.ts` (bundle 39.8KB → 36.9KB, -7.3%)
 - 🛡️ **Stdin Validation**: Clear `⚠️ stdin: missing fields` error on missing required fields
@@ -53,12 +68,18 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 
 ```
 🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5h: 12% (3h59m) │ 7d: all 18% │ Sonnet 1%
-💭 thinking │ 🎯 skill:commit │ T:42 A:5 S:2
-📁 my-project git:(main) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
+💭 thinking │ 🎯 skill:commit │ T:42 A:5 S:2 │ 🔥 12K tok/min │ +156 -42
+📁 my-project git:(main* ↑2) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: Finding patterns... │ ✓ librarian (2s)
 ▸ Implement auth flow (2/5)
 ⚠️ Context 85% - consider /compact
+```
+
+**Token breakdown at high context:**
+```
+🤖 Opus 4.6 │ █████████░ 91% │ 182K/200K │ (in: 150K, cache: 32K) │ 5h: 49% (1h39m)
+🔴 Context 91% - /compact recommended!
 ```
 
 ## Installation
@@ -141,7 +162,35 @@ Special thanks to **별아해 (byeorahae)** for valuable feedback and bug fixes.
 
 Built with [OhMyOpenCode](https://github.com/anthropics/claude-code).
 
+## Configuration Options
+
+You can toggle individual widgets in `~/.claude/claude-ultimate-hud.local.json`:
+
+```json
+{
+  "display": {
+    "showTools": true,
+    "showAgents": true,
+    "showTodos": true,
+    "showStats": true,
+    "showTokenBreakdown": true
+  }
+}
+```
+
 ## Changelog
+
+### v1.5.0
+- 🔒 **API Stability**: User-Agent `claude-code/2.1`, 429 retry-after, stale cache fallback, negative caching, stampede lock
+- 🌿 **Git Extensions**: Dirty (`*`), ahead/behind (`↑N ↓N`), `Promise.all` parallel execution
+- 📊 **Native Stdin Priority**: `used_percentage`, `total_duration_ms` preferred
+- 🔥 **Burn Rate**: `🔥 12K tok/min` (2min sliding window)
+- 📝 **Lines Changed**: `+42 -8` (stdin.total_lines_added/removed)
+- 🔍 **Token Breakdown**: At ≥85% context shows `(in: 150K, cache: 32K)`
+- 📋 **TaskCreate/TaskUpdate**: New Claude Code task tools support (status normalization)
+- 📏 **Terminal Width**: `stripAnsi()`, `visualWidth()`, `sliceVisible()` with CJK/emoji
+- ⚙️ **Widget Toggles**: `config.display` for per-widget show/hide
+- 📦 **New File**: `speed-tracker.ts` (token speed tracking)
 
 ### v1.4.0
 - 🗑️ **Remove OMC Code** (bundle 39.8KB → 36.9KB, -7.3%)
