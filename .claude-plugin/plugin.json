@@ -7,6 +7,8 @@
   },
   "repository": "https://github.com/hadamyeedady12-dev/claude-ultimate-hud",
   "license": "MIT",
+  "commands": ["./commands/setup.md"],
+  "skills": "./skills/",
   "keywords": [
     "statusline",
     "hud",
