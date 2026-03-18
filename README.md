@@ -22,6 +22,10 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
+### v1.5.2 - Burn Rate 제거
+- 🗑️ **Burn rate 제거**: `🔥 14K tok/min` 표시 완전 삭제 — `speed-tracker.ts` 유틸리티, `BURN_RATE_WINDOW_MS` 상수, `burnRate` 필드 일괄 제거
+- 📦 **번들 경량화**: 미사용 토큰 속도 추적 코드 및 캐시 파일(`claude-ultimate-hud-speed-cache.json`) 제거
+
 ### v1.5.1 - 코드 품질 & 버그 수정
 - 🔧 **공유 execFileAsync**: git.ts, credentials.ts, i18n.ts의 중복 `execFileAsync`를 `utils/exec.ts`로 추출
 - 🐛 **서로게이트 페어 수정**: `sliceVisible`에서 이모지/보충 평면 문자 올바르게 처리 (`str[i]` → `codePointAt` + `charLen`)
@@ -40,7 +44,6 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 📊 **네이티브 context % 우선**: `stdin.used_percentage` 있으면 우선 사용 (더 정확)
 - ⏱️ **네이티브 세션 시간 우선**: `stdin.total_duration_ms` 있으면 우선 사용
 - 🌿 **Git 확장**: dirty 마커(`*`), ahead/behind(`↑N ↓N`), 3개 git 명령 병렬 실행
-- 🔥 **Burn rate**: 최근 2분 기준 토큰 소비 속도 (`🔥 12K tok/min`)
 - 📝 **Lines changed**: 코드 변경량 표시 (`+42 -8`)
 - 🔍 **Token breakdown**: context ≥ 85% 시 토큰 상세 (`in: 150K, cache: 32K`)
 - 📋 **TaskCreate/TaskUpdate**: 신규 Claude Code 태스크 도구 지원
@@ -78,7 +81,7 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 
 ```
 🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일: 전체 18% │ 소넷 1%
-💭 사고 중 │ 🎯 skill:commit │ 🔥 12K tok/min │ +156 -42
+💭 사고 중 │ 🎯 skill:commit │ +156 -42
 📁 my-project git:(main* ↑2) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: 패턴 찾는 중... │ ✓ librarian (2s)
@@ -204,13 +207,11 @@ bun install && bun run build
 - 🔒 **API 안정성**: User-Agent `claude-code/2.1`, 429 retry-after, stale cache fallback, negative caching, stampede lock
 - 🌿 **Git 확장**: dirty(`*`), ahead/behind(`↑N ↓N`), `Promise.all` 병렬 실행
 - 📊 **네이티브 stdin 우선**: `used_percentage`, `total_duration_ms` 우선 사용
-- 🔥 **Burn rate**: `🔥 12K tok/min` (2분 슬라이딩 윈도우)
 - 📝 **Lines changed**: `+42 -8` (stdin.total_lines_added/removed)
 - 🔍 **Token breakdown**: context ≥ 85% 시 `(in: 150K, cache: 32K)`
 - 📋 **TaskCreate/TaskUpdate**: 신규 Claude Code 태스크 도구 지원 (상태 정규화)
 - 📏 **터미널 너비 인식**: `stripAnsi()`, `visualWidth()`, `sliceVisible()` CJK/이모지 대응
 - ⚙️ **위젯 토글**: `config.display`로 개별 위젯 표시/숨김 설정
-- 📦 **신규 파일**: `speed-tracker.ts` (토큰 속도 추적)
 
 ### v1.4.0
 - 🗑️ **OMC 코드 완전 제거** (번들 39.8KB → 36.9KB, -7.3%)
