@@ -22,6 +22,16 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
+### v1.5.1 - 코드 품질 & 버그 수정
+- 🔧 **공유 execFileAsync**: git.ts, credentials.ts, i18n.ts의 중복 `execFileAsync`를 `utils/exec.ts`로 추출
+- 🐛 **서로게이트 페어 수정**: `sliceVisible`에서 이모지/보충 평면 문자 올바르게 처리 (`str[i]` → `codePointAt` + `charLen`)
+- ⚡ **O(n) ANSI 정규식**: `sliceVisible`에서 `str.slice(i).match()` → sticky regex (`/y` 플래그)로 O(n^2) 제거
+- 🎯 **Agent 도구 감지**: transcript 파서가 'Task' (레거시)와 'Agent' (현재) 도구명 모두 감지
+- 🏷️ **omc-line → stats-line 이름 변경**: OMC 명명 잔재 제거
+- 🗑️ **T/A/S 카운터 제거**: stats 라인에서 `T:35 A:0 S:0` 표시 제거
+- ⚙️ **기본 플랜 변경**: `DEFAULT_CONFIG` 기본값 max200 → max100
+- ♻️ **extractTarget 재사용**: 수동 slice를 기존 `truncate` 유틸리티로 교체
+
 ### v1.5.0 - API 안정성 & 확장 기능
 - 🔒 **User-Agent 수정**: `claude-code/2.1`로 변경하여 Anthropic API 429 방지
 - 🔄 **429 retry-after**: `retry-after` 헤더 읽고 ≤10초 시 1회 재시도, 실패 시 stale 캐시 반환
@@ -59,7 +69,7 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🚀 **API 캐시 TTL 5배 증가**: 60초 → 300초로 API 블로킹 빈도 대폭 감소
 - 🏗️ **pre-built JS 사용**: statusLine이 `dist/index.js`를 직접 실행하여 TS 컴파일 생략
 - 🌐 **i18n 확장**: TODO 완료 메시지, Thinking 상태 한국어/영어 번역 지원
-- 🐛 **변수 충돌 수정**: `omc-line.ts`의 `t` 변수 shadowing 버그 수정
+- 🐛 **변수 충돌 수정**: stats 렌더러의 `t` 변수 shadowing 버그 수정
 
 ### 추가 기능
 - 🌐 **다국어 지원**: 영어/한국어 자동 감지
@@ -68,7 +78,7 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 
 ```
 🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5시간: 12% (3시간59분) │ 7일: 전체 18% │ 소넷 1%
-💭 사고 중 │ 🎯 skill:commit │ T:42 A:5 S:2 │ 🔥 12K tok/min │ +156 -42
+💭 사고 중 │ 🎯 skill:commit │ 🔥 12K tok/min │ +156 -42
 📁 my-project git:(main* ↑2) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: 패턴 찾는 중... │ ✓ librarian (2s)
@@ -117,8 +127,8 @@ bun install && bun run build
 
 | 플랜 | 설명 |
 |------|------|
-| `max200` | Max $200/월 (20x) - 5시간 + 7일 전체 + 7일 소넷 **(권장)** |
-| `max100` | Max $100/월 (5x) - 5시간 + 7일 전체 + 7일 소넷 |
+| `max200` | Max $200/월 (20x) - 5시간 + 7일 전체 + 7일 소넷 |
+| `max100` | Max $100/월 (5x) - 5시간 + 7일 전체 + 7일 소넷 **(기본값)** |
 | `pro` | Pro - 5시간만 표시 |
 
 셋업 시 **언어**와 **플랜**을 선택할 수 있습니다. 나중에 변경하려면 `~/.claude/claude-ultimate-hud.local.json` 파일의 `language` 값을 `en`, `ko`, 또는 `auto`로 수정하세요.
@@ -180,6 +190,16 @@ bun install && bun run build
 
 ## 변경 이력
 
+### v1.5.1
+- 🔧 **공유 execFileAsync**: 3개 파일의 중복 함수를 `utils/exec.ts`로 추출 (ExecFileOptions 타이핑)
+- 🐛 **서로게이트 페어 수정**: `sliceVisible`이 이모지/보충 평면 문자를 올바르게 처리
+- ⚡ **O(n) ANSI 정규식**: sticky regex (`/y` 플래그)로 `sliceVisible` O(n^2) 성능 문제 해결
+- 🎯 **Agent 도구 감지**: transcript 파서가 'Task'와 'Agent' 도구명 모두 인식
+- 🏷️ **omc-line → stats-line**: OMC 명명 잔재 제거
+- 🗑️ **T/A/S 카운터 제거**: stats 라인에서 도구/에이전트/스킬 카운터 표시 제거
+- ⚙️ **기본 플랜**: DEFAULT_CONFIG max200 → max100
+- ♻️ **extractTarget**: 수동 slice를 `truncate` 유틸리티로 교체
+
 ### v1.5.0
 - 🔒 **API 안정성**: User-Agent `claude-code/2.1`, 429 retry-after, stale cache fallback, negative caching, stampede lock
 - 🌿 **Git 확장**: dirty(`*`), ahead/behind(`↑N ↓N`), `Promise.all` 병렬 실행
@@ -229,9 +249,9 @@ bun install && bun run build
 - 🌐 **i18n 확장**
   - TODO 완료 메시지 번역 (`All todos complete` / `모든 할 일 완료`)
   - Thinking 상태 번역 (`thinking` / `사고 중`)
-  - `renderTodosLine`, `renderOmcLine`에 Translations 파라미터 추가
+  - `renderTodosLine`, `renderStatsLine`에 Translations 파라미터 추가
 - 🐛 **변수 충돌 수정**
-  - `omc-line.ts`에서 `t: Translations` 파라미터와 `const t = ctx.transcript` 변수명 충돌 해결
+  - stats 렌더러에서 `t: Translations` 파라미터와 `const t = ctx.transcript` 변수명 충돌 해결
 
 ### v1.2.0
 - 📊 **컨텍스트 정확도 개선**
@@ -247,7 +267,7 @@ bun install && bun run build
   - OMC 미설치 시 완전 no-op (추가 출력 없음)
 - 💭 **Thinking 표시**: 모델 사고 중일 때 `💭 thinking` 표시
 - 🎯 **스킬 추적**: 마지막 스킬 호출 이름 표시
-- 📈 **호출 카운트**: `T:42 A:5 S:2` (도구/에이전트/스킬 누적 횟수)
+- 📈 **호출 카운트**: `T:42 A:5 S:2` (도구/에이전트/스킬 누적 횟수) *(v1.5.1에서 제거됨)*
 
 ### v1.1.6
 - 🐛 **MCP 서버 카운트 수정**

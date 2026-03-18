@@ -22,6 +22,16 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🤖 **Agent Status**: Subagent progress tracking
 - ✅ **Todo Progress**: Current task and completion rate
 
+### v1.5.1 - Code Quality & Bug Fixes
+- 🔧 **Shared execFileAsync**: Extracted duplicate `execFileAsync` from git.ts, credentials.ts, i18n.ts into `utils/exec.ts` with proper ExecFileOptions typing
+- 🐛 **Surrogate Pair Fix**: `sliceVisible` now handles emoji/supplementary plane characters correctly (`str[i]` → `codePointAt` + `charLen`)
+- ⚡ **O(n) ANSI Regex**: `sliceVisible` uses sticky regex (`/y` flag) instead of `str.slice(i).match()`, eliminating O(n^2)
+- 🎯 **Agent Tool Detection**: Transcript parser now detects both 'Task' (legacy) and 'Agent' (current) tool names
+- 🏷️ **omc-line → stats-line Rename**: Removed OMC naming remnant
+- 🗑️ **Remove T/A/S Counters**: Removed `T:35 A:0 S:0` display from stats line
+- ⚙️ **Default Plan Change**: `DEFAULT_CONFIG` changed from max200 to max100
+- ♻️ **extractTarget Reuse**: Replaced manual slice with existing `truncate` utility
+
 ### v1.5.0 - API Stability & Extended Features
 - 🔒 **User-Agent Fix**: Changed to `claude-code/2.1` to prevent Anthropic API 429 errors
 - 🔄 **429 retry-after**: Reads `retry-after` header, retries once if ≤10s, stale cache fallback
@@ -59,7 +69,7 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🚀 **5x API Cache TTL**: 60s → 300s, significantly reducing API blocking frequency
 - 🏗️ **Pre-built JS**: statusLine runs `dist/index.js` directly, skipping TS compilation
 - 🌐 **i18n Expansion**: Todo completion and Thinking state messages now translated (EN/KO)
-- 🐛 **Variable Shadowing Fix**: Fix `t` variable collision in `omc-line.ts`
+- 🐛 **Variable Shadowing Fix**: Fix `t` variable collision in stats renderer
 
 ### Additional
 - 🌐 **i18n**: English and Korean support (auto-detect)
@@ -68,7 +78,7 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 
 ```
 🤖 Opus 4.6 │ ████░░░░░░ 18% │ 37K/200K │ 5h: 12% (3h59m) │ 7d: all 18% │ Sonnet 1%
-💭 thinking │ 🎯 skill:commit │ T:42 A:5 S:2 │ 🔥 12K tok/min │ +156 -42
+💭 thinking │ 🎯 skill:commit │ 🔥 12K tok/min │ +156 -42
 📁 my-project git:(main* ↑2) │ 2 CLAUDE.md │ 8 rules │ 6 MCPs │ 6 hooks │ ⏱️ 1h30m
 ◐ Read: file.ts │ ✓ Bash ×5 │ ✓ Edit ×3
 ◐ explore: Finding patterns... │ ✓ librarian (2s)
@@ -117,8 +127,8 @@ Running the command will show an interactive menu to select your plan:
 
 | Plan | Description |
 |------|-------------|
-| `max200` | Max $200/month (20x) - 5h + 7d all + 7d Sonnet **(Recommended)** |
-| `max100` | Max $100/month (5x) - 5h + 7d all + 7d Sonnet |
+| `max200` | Max $200/month (20x) - 5h + 7d all + 7d Sonnet |
+| `max100` | Max $100/month (5x) - 5h + 7d all + 7d Sonnet **(Default)** |
 | `pro` | Pro - 5h only |
 
 Setup will ask for both **language** and **plan** preferences. To change later, edit `~/.claude/claude-ultimate-hud.local.json` and set `language` to `en`, `ko`, or `auto`.
@@ -180,6 +190,16 @@ You can toggle individual widgets in `~/.claude/claude-ultimate-hud.local.json`:
 
 ## Changelog
 
+### v1.5.1
+- 🔧 **Shared execFileAsync**: Extracted duplicate function from 3 files into `utils/exec.ts` (ExecFileOptions typing)
+- 🐛 **Surrogate Pair Fix**: `sliceVisible` handles emoji/supplementary plane characters correctly
+- ⚡ **O(n) ANSI Regex**: Sticky regex (`/y` flag) eliminates O(n^2) in `sliceVisible`
+- 🎯 **Agent Tool Detection**: Transcript parser recognizes both 'Task' and 'Agent' tool names
+- 🏷️ **omc-line → stats-line**: Removed OMC naming remnant
+- 🗑️ **Remove T/A/S Counters**: Removed tool/agent/skill counters from stats line
+- ⚙️ **Default Plan**: DEFAULT_CONFIG max200 → max100
+- ♻️ **extractTarget**: Replaced manual slice with `truncate` utility
+
 ### v1.5.0
 - 🔒 **API Stability**: User-Agent `claude-code/2.1`, 429 retry-after, stale cache fallback, negative caching, stampede lock
 - 🌿 **Git Extensions**: Dirty (`*`), ahead/behind (`↑N ↓N`), `Promise.all` parallel execution
@@ -229,9 +249,9 @@ You can toggle individual widgets in `~/.claude/claude-ultimate-hud.local.json`:
 - 🌐 **i18n Expansion**
   - Todo completion message translation (`All todos complete` / `모든 할 일 완료`)
   - Thinking state translation (`thinking` / `사고 중`)
-  - Added Translations parameter to `renderTodosLine` and `renderOmcLine`
+  - Added Translations parameter to `renderTodosLine` and `renderStatsLine`
 - 🐛 **Variable Shadowing Fix**
-  - Resolved `t: Translations` parameter collision with `const t = ctx.transcript` in `omc-line.ts`
+  - Resolved `t: Translations` parameter collision with `const t = ctx.transcript` in stats renderer
 
 ### v1.2.0
 - 📊 **Context Accuracy**
@@ -247,7 +267,7 @@ You can toggle individual widgets in `~/.claude/claude-ultimate-hud.local.json`:
   - Complete no-op without OMC (zero extra output)
 - 💭 **Thinking Indicator**: Shows `💭 thinking` during model reasoning
 - 🎯 **Skill Tracking**: Displays last invoked skill name
-- 📈 **Call Counters**: `T:42 A:5 S:2` (cumulative tool/agent/skill counts)
+- 📈 **Call Counters**: `T:42 A:5 S:2` (cumulative tool/agent/skill counts) *(removed in v1.5.1)*
 
 ### v1.1.6
 - 🐛 **MCP Server Count Fix**

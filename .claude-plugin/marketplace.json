@@ -5,8 +5,8 @@
     "email": ""
   },
   "metadata": {
-    "description": "Ultimate status line with API stability, git extensions (dirty/ahead/behind), burn rate, token breakdown, and widget toggles",
-    "version": "1.5.0"
+    "description": "Ultimate status line with API stability, git extensions, burn rate, token breakdown, widget toggles, surrogate pair fix, Agent detection, shared exec module, and performance optimization",
+    "version": "1.5.1"
   },
   "plugins": [
     {

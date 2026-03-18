@@ -1,7 +1,7 @@
 {
   "name": "claude-ultimate-hud",
-  "version": "1.5.0",
-  "description": "Ultimate status line combining rate limits, project info, tool activity, and todo progress",
+  "version": "1.5.1",
+  "description": "Ultimate status line combining rate limits, project info, tool activity, todo progress, and improved emoji/CJK support",
   "author": {
     "name": "hadamyeedady12-dev"
   },
@@ -16,6 +16,8 @@
     "tools",
     "agents",
     "todos",
-    "i18n"
+    "i18n",
+    "performance",
+    "emoji"
   ]
 }
