@@ -42,7 +42,7 @@ export interface Config {
 
 export const DEFAULT_CONFIG: Config = {
   language: 'ko',
-  plan: 'max200',
+  plan: 'max100',
   cache: {
     ttlSeconds: 300,
   },
