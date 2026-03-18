@@ -98,6 +98,8 @@ export function visualWidth(str: string): number {
   return width;
 }
 
+const ANSI_STICKY = /\x1b\[[0-9;]*m/y;
+
 export function sliceVisible(str: string, maxWidth: number): string {
   let visW = 0;
   let result = '';
@@ -105,22 +107,23 @@ export function sliceVisible(str: string, maxWidth: number): string {
 
   while (i < str.length) {
     // Pass through ANSI escape sequences without counting width
-    const ansiMatch = str.slice(i).match(/^\x1b\[[0-9;]*m/);
+    ANSI_STICKY.lastIndex = i;
+    const ansiMatch = ANSI_STICKY.exec(str);
     if (ansiMatch) {
       result += ansiMatch[0];
-      i += ansiMatch[0].length;
+      i = ANSI_STICKY.lastIndex;
       continue;
     }
 
-    const ch = str[i];
-    const code = ch.codePointAt(0)!;
+    const code = str.codePointAt(i)!;
+    const charLen = code > 0xffff ? 2 : 1;
     const charWidth = isWideChar(code) ? 2 : 1;
 
     if (visW + charWidth > maxWidth) break;
 
-    result += ch;
+    result += str.slice(i, i + charLen);
     visW += charWidth;
-    i++;
+    i += charLen;
   }
 
   return result + '\x1b[0m';
