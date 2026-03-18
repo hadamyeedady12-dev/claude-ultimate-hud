@@ -9,7 +9,7 @@ import { existsSync as existsSync5, statSync as statSync3 } from "node:fs";
 // src/types.ts
 var DEFAULT_CONFIG = {
   language: "ko",
-  plan: "max200",
+  plan: "max100",
   cache: {
     ttlSeconds: 300
   }
@@ -154,25 +154,27 @@ function visualWidth(str) {
   }
   return width;
 }
+var ANSI_STICKY = /\x1b\[[0-9;]*m/y;
 function sliceVisible(str, maxWidth) {
   let visW = 0;
   let result = "";
   let i = 0;
   while (i < str.length) {
-    const ansiMatch = str.slice(i).match(/^\x1b\[[0-9;]*m/);
+    ANSI_STICKY.lastIndex = i;
+    const ansiMatch = ANSI_STICKY.exec(str);
     if (ansiMatch) {
       result += ansiMatch[0];
-      i += ansiMatch[0].length;
+      i = ANSI_STICKY.lastIndex;
       continue;
     }
-    const ch = str[i];
-    const code = ch.codePointAt(0);
+    const code = str.codePointAt(i);
+    const charLen = code > 65535 ? 2 : 1;
     const charWidth = isWideChar(code) ? 2 : 1;
     if (visW + charWidth > maxWidth)
       break;
-    result += ch;
+    result += str.slice(i, i + charLen);
     visW += charWidth;
-    i++;
+    i += charLen;
   }
   return result + "\x1B[0m";
 }
@@ -184,7 +186,6 @@ import path2 from "node:path";
 import crypto from "node:crypto";
 
 // src/utils/credentials.ts
-import { execFile } from "node:child_process";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -205,10 +206,11 @@ function debugTrace(label, msg) {
 `);
 }
 
-// src/utils/credentials.ts
+// src/utils/exec.ts
+import { execFile } from "node:child_process";
 function execFileAsync(cmd, args, options) {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, options, (error, stdout) => {
+    execFile(cmd, args, options ?? {}, (error, stdout) => {
       if (error)
         reject(error);
       else
@@ -216,6 +218,8 @@ function execFileAsync(cmd, args, options) {
     });
   });
 }
+
+// src/utils/credentials.ts
 async function getCredentials() {
   try {
     if (process.platform === "darwin") {
@@ -835,7 +839,7 @@ function processEntry(entry, toolMap, agentMap, latestTodos, result) {
         status: "running",
         startTime: timestamp
       };
-      if (block.name === "Task") {
+      if (block.name === "Task" || block.name === "Agent") {
         const input = block.input;
         const agentEntry = {
           type: input?.subagent_type ?? "unknown",
@@ -912,14 +916,13 @@ function extractTarget(toolName, input) {
       return input.pattern;
     case "Bash": {
       const cmd = input.command;
-      return cmd?.slice(0, 30) + (cmd?.length > 30 ? "..." : "");
+      return cmd ? truncate(cmd, 33) : undefined;
     }
   }
   return;
 }
 
 // src/utils/git.ts
-import { execFile as execFile2 } from "node:child_process";
 import { existsSync as existsSync3, statSync as statSync2, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join4 } from "node:path";
 import { homedir as homedir4 } from "node:os";
@@ -943,16 +946,6 @@ function saveGitCache(cwd, info) {
     writeFileSync3(GIT_CACHE_FILE, JSON.stringify({ cwd, timestamp: Date.now(), info }), { mode: 384 });
   } catch {}
 }
-function execFileAsync2(cmd, args, options) {
-  return new Promise((resolve2, reject) => {
-    execFile2(cmd, args, options, (error, stdout) => {
-      if (error)
-        reject(error);
-      else
-        resolve2(String(stdout));
-    });
-  });
-}
 async function getGitInfo(cwd) {
   if (!cwd)
     return;
@@ -968,9 +961,9 @@ async function getGitInfo(cwd) {
   try {
     const execOpts = { cwd, encoding: "utf-8", timeout: EXEC_TIMEOUT_MS };
     const [branchResult, statusResult, upstreamResult] = await Promise.all([
-      execFileAsync2("git", ["rev-parse", "--abbrev-ref", "HEAD"], execOpts),
-      execFileAsync2("git", ["--no-optional-locks", "status", "--porcelain"], execOpts).catch(() => ""),
-      execFileAsync2("git", ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], execOpts).catch(() => "")
+      execFileAsync("git", ["rev-parse", "--abbrev-ref", "HEAD"], execOpts),
+      execFileAsync("git", ["--no-optional-locks", "status", "--porcelain"], execOpts).catch(() => ""),
+      execFileAsync("git", ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], execOpts).catch(() => "")
     ]);
     const branch = branchResult.trim();
     if (!branch)
@@ -993,7 +986,6 @@ async function getGitInfo(cwd) {
 }
 
 // src/utils/i18n.ts
-import { execFile as execFile3 } from "node:child_process";
 var EN = {
   labels: {
     "5h": "5h",
@@ -1051,14 +1043,7 @@ var KO = {
 function getMacOSLocaleAsync() {
   if (process.platform !== "darwin")
     return Promise.resolve("");
-  return new Promise((resolve2) => {
-    execFile3("defaults", ["read", "-g", "AppleLocale"], { encoding: "utf-8", timeout: EXEC_TIMEOUT_MS }, (error, stdout) => {
-      if (error)
-        resolve2("");
-      else
-        resolve2(String(stdout).trim());
-    });
-  });
+  return execFileAsync("defaults", ["read", "-g", "AppleLocale"], { encoding: "utf-8", timeout: EXEC_TIMEOUT_MS }).then((s) => s.trim()).catch(() => "");
 }
 function isValidLangCode(lang) {
   if (!lang)
@@ -1299,7 +1284,7 @@ function renderTodosLine(ctx, t) {
   return `${yellow("▸")} ${content} ${progress}`;
 }
 
-// src/render/omc-line.ts
+// src/render/stats-line.ts
 function renderStatsLine(ctx, t) {
   const parts = [];
   const tr = ctx.transcript;
@@ -1308,10 +1293,6 @@ function renderStatsLine(ctx, t) {
   }
   if (tr.lastSkill) {
     parts.push(`${COLORS.cyan}\uD83C\uDFAF skill:${tr.lastSkill.name}${RESET}`);
-  }
-  if (tr.toolCallCount > 0 || tr.agentCallCount > 0 || tr.skillCallCount > 0) {
-    const counts = [`T:${tr.toolCallCount}`, `A:${tr.agentCallCount}`, `S:${tr.skillCallCount}`].join(" ");
-    parts.push(colorize(counts, COLORS.dim));
   }
   if (ctx.burnRate != null && ctx.burnRate > 0) {
     parts.push(colorize(`\uD83D\uDD25 ${formatTokens(ctx.burnRate)} tok/min`, COLORS.dim));
