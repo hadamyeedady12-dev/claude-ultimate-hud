@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import type { TranscriptData, ToolEntry, AgentEntry, TodoEntry } from '../types.js';
 import { debugError } from './errors.js';
+import { truncate } from './formatters.js';
 import { MAX_TRANSCRIPT_TOOLS, MAX_TRANSCRIPT_AGENTS } from '../constants.js';
 
 const TRANSCRIPT_CACHE_FILE = path.join(os.homedir(), '.claude', 'claude-ultimate-hud-transcript-cache.json');
@@ -306,7 +307,7 @@ function processEntry(
         startTime: timestamp,
       };
 
-      if (block.name === 'Task') {
+      if (block.name === 'Task' || block.name === 'Agent') {
         const input = block.input as Record<string, unknown>;
         const agentEntry: AgentEntry = {
           type: (input?.subagent_type as string) ?? 'unknown',
@@ -386,7 +387,7 @@ function extractTarget(toolName: string, input?: Record<string, unknown>): strin
       return input.pattern as string;
     case 'Bash': {
       const cmd = input.command as string;
-      return cmd?.slice(0, 30) + (cmd?.length > 30 ? '...' : '');
+      return cmd ? truncate(cmd, 33) : undefined;
     }
   }
   return undefined;
