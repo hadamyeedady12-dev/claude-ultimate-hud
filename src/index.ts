@@ -14,7 +14,6 @@ import { countConfigs } from './utils/config-counter.js';
 import { parseTranscript } from './utils/transcript.js';
 import { getGitInfo } from './utils/git.js';
 import { getTranslations } from './utils/i18n.js';
-import { trackTokenSpeed } from './utils/speed-tracker.js';
 import { render } from './render/index.js';
 import { debugError } from './utils/errors.js';
 import { STDIN_TIMEOUT_MS } from './constants.js';
@@ -116,13 +115,6 @@ async function main(): Promise<void> {
       ? formatSessionDurationMs(stdin.total_duration_ms)
       : formatSessionDuration(transcript.sessionStart);
 
-  // Burn rate tracking
-  const usage = stdin.context_window.current_usage;
-  const currentTokens = usage
-    ? usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens
-    : 0;
-  const burnRate = currentTokens > 0 ? trackTokenSpeed(currentTokens) : null;
-
   const ctx: RenderContext = {
     stdin,
     config,
@@ -131,7 +123,6 @@ async function main(): Promise<void> {
     gitInfo,
     sessionDuration,
     rateLimits,
-    burnRate,
   };
 
   render(ctx, t);

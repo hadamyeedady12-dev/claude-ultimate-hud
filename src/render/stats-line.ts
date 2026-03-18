@@ -1,6 +1,5 @@
 import type { RenderContext, Translations } from '../types.js';
 import { COLORS, RESET, colorize } from '../utils/colors.js';
-import { formatTokens } from '../utils/formatters.js';
 
 export function renderStatsLine(ctx: RenderContext, t: Translations): string {
   const parts: string[] = [];
@@ -14,11 +13,6 @@ export function renderStatsLine(ctx: RenderContext, t: Translations): string {
   // Last skill invoked
   if (tr.lastSkill) {
     parts.push(`${COLORS.cyan}\u{1F3AF} skill:${tr.lastSkill.name}${RESET}`);
-  }
-
-  // Burn rate
-  if (ctx.burnRate != null && ctx.burnRate > 0) {
-    parts.push(colorize(`🔥 ${formatTokens(ctx.burnRate)} tok/min`, COLORS.dim));
   }
 
   // Lines changed

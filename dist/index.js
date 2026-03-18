@@ -2,9 +2,9 @@
 
 // src/index.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join6, isAbsolute, resolve as resolve2, sep } from "node:path";
-import { homedir as homedir6 } from "node:os";
-import { existsSync as existsSync5, statSync as statSync3 } from "node:fs";
+import { join as join5, isAbsolute, resolve as resolve2, sep } from "node:path";
+import { homedir as homedir5 } from "node:os";
+import { existsSync as existsSync4, statSync as statSync3 } from "node:fs";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
@@ -35,7 +35,6 @@ var STALE_CACHE_MAX_AGE_S = 3600;
 var NEGATIVE_CACHE_TTL_S = 30;
 var LOCK_STALE_S = 30;
 var LOCK_WAIT_MS = 2000;
-var BURN_RATE_WINDOW_MS = 120000;
 
 // src/utils/colors.ts
 var COLORS = {
@@ -1068,40 +1067,6 @@ async function getTranslations(config) {
   return lang === "ko" ? KO : EN;
 }
 
-// src/utils/speed-tracker.ts
-import * as fs4 from "node:fs";
-import * as path5 from "node:path";
-import * as os4 from "node:os";
-var SPEED_CACHE_FILE = path5.join(os4.homedir(), ".claude", "claude-ultimate-hud-speed-cache.json");
-function trackTokenSpeed(currentTokens) {
-  const now = Date.now();
-  let entries = [];
-  try {
-    if (fs4.existsSync(SPEED_CACHE_FILE)) {
-      const raw = JSON.parse(fs4.readFileSync(SPEED_CACHE_FILE, "utf-8"));
-      entries = raw.entries ?? [];
-    }
-  } catch {}
-  entries.push({ timestamp: now, tokens: currentTokens });
-  entries = entries.filter((e) => now - e.timestamp <= BURN_RATE_WINDOW_MS);
-  try {
-    fs4.writeFileSync(SPEED_CACHE_FILE, JSON.stringify({ entries }), { mode: 384 });
-  } catch (e) {
-    debugError("speed cache write", e);
-  }
-  if (entries.length < 2)
-    return null;
-  const oldest = entries[0];
-  const newest = entries[entries.length - 1];
-  const timeDiffMs = newest.timestamp - oldest.timestamp;
-  if (timeDiffMs < 1e4)
-    return null;
-  const tokenDiff = newest.tokens - oldest.tokens;
-  if (tokenDiff <= 0)
-    return null;
-  return Math.round(tokenDiff / timeDiffMs * 60000);
-}
-
 // src/render/session-line.ts
 var SEP = ` ${COLORS.dim}│${RESET} `;
 function renderSessionLine(ctx, t) {
@@ -1168,12 +1133,12 @@ function buildRateLimitsSection(ctx, t) {
 }
 
 // src/render/project-line.ts
-import path6 from "node:path";
+import path5 from "node:path";
 var SEP2 = ` ${COLORS.dim}│${RESET} `;
 function renderProjectLine(ctx) {
   const parts = [];
   if (ctx.stdin.cwd) {
-    const projectName = path6.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
+    const projectName = path5.basename(ctx.stdin.cwd) || ctx.stdin.cwd;
     let projectPart = `\uD83D\uDCC1 ${yellow(projectName)}`;
     if (ctx.gitInfo) {
       let gitStr = ctx.gitInfo.branch;
@@ -1294,9 +1259,6 @@ function renderStatsLine(ctx, t) {
   if (tr.lastSkill) {
     parts.push(`${COLORS.cyan}\uD83C\uDFAF skill:${tr.lastSkill.name}${RESET}`);
   }
-  if (ctx.burnRate != null && ctx.burnRate > 0) {
-    parts.push(colorize(`\uD83D\uDD25 ${formatTokens(ctx.burnRate)} tok/min`, COLORS.dim));
-  }
   const added = ctx.stdin.total_lines_added;
   const removed = ctx.stdin.total_lines_removed;
   if (added != null || removed != null) {
@@ -1364,12 +1326,12 @@ function render(ctx, t) {
 }
 
 // src/index.ts
-var CONFIG_PATH = join6(homedir6(), ".claude", "claude-ultimate-hud.local.json");
+var CONFIG_PATH = join5(homedir5(), ".claude", "claude-ultimate-hud.local.json");
 function isValidDirectory(p) {
   if (!p || !isAbsolute(p))
     return false;
   try {
-    return existsSync5(p) && statSync3(p).isDirectory();
+    return existsSync4(p) && statSync3(p).isDirectory();
   } catch {
     return false;
   }
@@ -1379,10 +1341,10 @@ function isValidTranscriptPath(p) {
     return true;
   if (!isAbsolute(p))
     return false;
-  const claudeDir = join6(homedir6(), ".claude");
+  const claudeDir = join5(homedir5(), ".claude");
   try {
     const resolved = resolve2(p);
-    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync5(resolved);
+    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync4(resolved);
   } catch {
     return false;
   }
@@ -1439,9 +1401,6 @@ async function main() {
     getTranslations(config)
   ]);
   const sessionDuration = stdin.total_duration_ms != null ? formatSessionDurationMs(stdin.total_duration_ms) : formatSessionDuration(transcript.sessionStart);
-  const usage = stdin.context_window.current_usage;
-  const currentTokens = usage ? usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens : 0;
-  const burnRate = currentTokens > 0 ? trackTokenSpeed(currentTokens) : null;
   const ctx = {
     stdin,
     config,
@@ -1449,8 +1408,7 @@ async function main() {
     configCounts,
     gitInfo,
     sessionDuration,
-    rateLimits,
-    burnRate
+    rateLimits
   };
   render(ctx, t);
 }

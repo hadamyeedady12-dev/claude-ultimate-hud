@@ -54,6 +54,3 @@ export const LOCK_STALE_S = 30;
 
 /** Max wait time for lock acquisition in milliseconds */
 export const LOCK_WAIT_MS = 2000;
-
-/** Burn rate calculation window in milliseconds */
-export const BURN_RATE_WINDOW_MS = 120_000;

@@ -116,7 +116,6 @@ export interface RenderContext {
   gitInfo?: GitInfo;
   sessionDuration: string;
   rateLimits: UsageLimits | null;
-  burnRate?: number | null;
 }
 
 export interface Translations {
