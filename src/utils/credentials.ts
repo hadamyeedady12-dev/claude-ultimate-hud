@@ -1,18 +1,9 @@
-import { execFile } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { debugError, debugTrace } from './errors.js';
+import { execFileAsync } from './exec.js';
 import { EXEC_TIMEOUT_MS } from '../constants.js';
-
-function execFileAsync(cmd: string, args: string[], options: Record<string, unknown>): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, options, (error, stdout) => {
-      if (error) reject(error);
-      else resolve(String(stdout));
-    });
-  });
-}
 
 export async function getCredentials(): Promise<string | null> {
   try {

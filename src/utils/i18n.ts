@@ -1,5 +1,5 @@
-import { execFile } from 'node:child_process';
 import type { Config, Translations } from '../types.js';
+import { execFileAsync } from './exec.js';
 import { EXEC_TIMEOUT_MS } from '../constants.js';
 
 const EN: Translations = {
@@ -60,12 +60,9 @@ const KO: Translations = {
 
 function getMacOSLocaleAsync(): Promise<string> {
   if (process.platform !== 'darwin') return Promise.resolve('');
-  return new Promise((resolve) => {
-    execFile('defaults', ['read', '-g', 'AppleLocale'], { encoding: 'utf-8', timeout: EXEC_TIMEOUT_MS }, (error, stdout) => {
-      if (error) resolve('');
-      else resolve(String(stdout).trim());
-    });
-  });
+  return execFileAsync('defaults', ['read', '-g', 'AppleLocale'], { encoding: 'utf-8', timeout: EXEC_TIMEOUT_MS })
+    .then((s) => s.trim())
+    .catch(() => '');
 }
 
 function isValidLangCode(lang: string): boolean {

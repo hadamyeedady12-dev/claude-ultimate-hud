@@ -1,9 +1,9 @@
-import { execFile } from 'node:child_process';
 import { existsSync, statSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type { GitInfo } from '../types.js';
 import { debugError } from './errors.js';
+import { execFileAsync } from './exec.js';
 import { EXEC_TIMEOUT_MS } from '../constants.js';
 
 const GIT_CACHE_FILE = join(homedir(), '.claude', 'claude-ultimate-hud-git-cache.json');
@@ -33,15 +33,6 @@ function saveGitCache(cwd: string, info: GitInfo): void {
   } catch {
     /* ignore */
   }
-}
-
-function execFileAsync(cmd: string, args: string[], options: Record<string, unknown>): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, options, (error, stdout) => {
-      if (error) reject(error);
-      else resolve(String(stdout));
-    });
-  });
 }
 
 export async function getGitInfo(cwd?: string): Promise<GitInfo | undefined> {
