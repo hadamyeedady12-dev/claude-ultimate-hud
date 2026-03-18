@@ -16,12 +16,6 @@ export function renderStatsLine(ctx: RenderContext, t: Translations): string {
     parts.push(`${COLORS.cyan}\u{1F3AF} skill:${tr.lastSkill.name}${RESET}`);
   }
 
-  // Call counts
-  if (tr.toolCallCount > 0 || tr.agentCallCount > 0 || tr.skillCallCount > 0) {
-    const counts = [`T:${tr.toolCallCount}`, `A:${tr.agentCallCount}`, `S:${tr.skillCallCount}`].join(' ');
-    parts.push(colorize(counts, COLORS.dim));
-  }
-
   // Burn rate
   if (ctx.burnRate != null && ctx.burnRate > 0) {
     parts.push(colorize(`🔥 ${formatTokens(ctx.burnRate)} tok/min`, COLORS.dim));
