@@ -21,11 +21,13 @@ export function render(ctx: RenderContext, t: Translations): void {
     renderContextWarning(ctx, t),
   ].filter(Boolean);
 
+  const output: string[] = [];
   for (const line of lines) {
     let outputLine = `${RESET}${line!.replace(/ /g, '\u00A0')}`;
     if (visualWidth(outputLine) > termWidth) {
       outputLine = sliceVisible(outputLine, termWidth);
     }
-    console.log(outputLine);
+    output.push(outputLine);
   }
+  process.stdout.write(output.join('\n') + '\n');
 }
