@@ -1,6 +1,6 @@
 import type { RenderContext, Translations } from '../types.js';
 import { RESET } from '../utils/colors.js';
-import { visualWidth, sliceVisible } from '../utils/formatters.js';
+import { stripAnsi, visualWidth, sliceVisible } from '../utils/formatters.js';
 import { renderSessionLine } from './session-line.js';
 import { renderProjectLine } from './project-line.js';
 import { renderToolsLine, renderAgentsLine, renderTodosLine } from './activity-lines.js';
@@ -24,7 +24,9 @@ export function render(ctx: RenderContext, t: Translations): void {
   const output: string[] = [];
   for (const line of lines) {
     let outputLine = `${RESET}${line!.replace(/ /g, '\u00A0')}`;
-    if (visualWidth(outputLine) > termWidth) {
+    // Fast path: if plain text length < half terminal width, no CJK char can overflow
+    const plain = stripAnsi(outputLine);
+    if (plain.length > termWidth / 2 && visualWidth(outputLine) > termWidth) {
       outputLine = sliceVisible(outputLine, termWidth);
     }
     output.push(outputLine);
