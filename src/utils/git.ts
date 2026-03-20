@@ -1,4 +1,4 @@
-import { existsSync, statSync, readFileSync, writeFileSync } from 'node:fs';
+import { statSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type { GitInfo } from '../types.js';
@@ -41,7 +41,7 @@ export async function getGitInfo(cwd?: string): Promise<GitInfo | undefined> {
   if (cached) return cached;
 
   try {
-    if (!existsSync(cwd) || !statSync(cwd).isDirectory()) return undefined;
+    if (!statSync(cwd).isDirectory()) return undefined;
   } catch {
     return undefined;
   }
