@@ -1,0 +1,20 @@
+commit	metric	value	status	description
+baseline	median_ms	20.7	keep	baseline measurement (20 runs)
+87ba2bf	median_ms	20.3	keep	single process.stdout.write instead of per-line console.log
+07bc408	median_ms	20.0	keep	eliminate existsSync before readFileSync in 5 cache loaders
+dcd51d8	median_ms	19.9	keep	skip visualWidth for short lines (fast path)
+7303372	median_ms	19.8	keep	remove existsSync from git.ts
+7303372	median_ms	20.0	discard	remove crypto import for temp filenames (+0.2ms)
+7303372	median_ms	21.7	discard	cache readJsonFile + replace existsSync with statSync (+1.9ms)
+7303372	median_ms	20.0	discard	remove atomic write + crypto from cache saves (+0.2ms)
+7303372	median_ms	20.4	discard	single-loop tools filter (+0.6ms)
+f1c059c	median_ms	19.5	keep	switch statusLine to dist/index.js (-1.1ms)
+local	median_ms	19.2	keep	resolve i18n before Promise.all (-0.6ms, P95 37→21ms)
+local	median_ms	19.9	discard	sync loadConfig blocks stdin reading (+0.7ms)
+discard: isValidDirectory single statSync (+1.0ms)
+local	median_ms	22.0	discard	for-loop instead of filter(Boolean) (+2.2ms)
+local	median_ms	20.6	discard	bun --minify halved bundle but +0.8ms
+local	median_ms	17.4	keep	Bun.stdin.text() instead of for-await loop (-2.4ms from 19.8)
+local	median_ms	15.4	keep	--target=bun instead of --target=node (-2.0ms from 17.4)
+local	median_ms	15.2	discard	--minify with --target=bun (marginal, loses debug readability)
+local	median_ms	15.6	discard	remove width check (no change, loses safety)

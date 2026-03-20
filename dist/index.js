@@ -1,10 +1,11 @@
 #!/usr/bin/env node
+// @bun
 
 // src/index.ts
-import { readFile as readFile2 } from "node:fs/promises";
-import { join as join5, isAbsolute, resolve as resolve2, sep } from "node:path";
-import { homedir as homedir5 } from "node:os";
-import { existsSync as existsSync4, statSync as statSync3 } from "node:fs";
+import { readFile as readFile2 } from "fs/promises";
+import { join as join5, isAbsolute, resolve as resolve2, sep } from "path";
+import { homedir as homedir5 } from "os";
+import { existsSync as existsSync3, statSync as statSync3 } from "fs";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
@@ -76,11 +77,11 @@ function renderProgressBar(percent, width = PROGRESS_BAR_WIDTH) {
   const filled = Math.round(percent / 100 * width);
   const empty = width - filled;
   const color = getColorForPercent(percent);
-  return `${color}${"█".repeat(filled)}${COLORS.dim}${"░".repeat(empty)}${RESET}`;
+  return `${color}${"\u2588".repeat(filled)}${COLORS.dim}${"\u2591".repeat(empty)}${RESET}`;
 }
 
 // src/utils/formatters.ts
-import path from "node:path";
+import path from "path";
 function formatTokens(n) {
   if (n >= 950000)
     return `${(n / 1e6).toFixed(1)}M`;
@@ -179,15 +180,15 @@ function sliceVisible(str, maxWidth) {
 }
 
 // src/utils/api-client.ts
-import fs from "node:fs";
-import os from "node:os";
-import path2 from "node:path";
-import crypto from "node:crypto";
+import fs from "fs";
+import os from "os";
+import path2 from "path";
+import crypto from "crypto";
 
 // src/utils/credentials.ts
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
-import { homedir } from "node:os";
+import { readFile, stat } from "fs/promises";
+import { join } from "path";
+import { homedir } from "os";
 
 // src/utils/errors.ts
 var IS_DEBUG = process.env.CLAUDE_HUD_DEBUG === "1";
@@ -206,7 +207,7 @@ function debugTrace(label, msg) {
 }
 
 // src/utils/exec.ts
-import { execFile } from "node:child_process";
+import { execFile } from "child_process";
 function execFileAsync(cmd, args, options) {
   return new Promise((resolve, reject) => {
     execFile(cmd, args, options ?? {}, (error, stdout) => {
@@ -377,8 +378,6 @@ function extractLimits(data) {
 }
 function loadFileCache(maxAgeSeconds) {
   try {
-    if (!fs.existsSync(CACHE_FILE))
-      return null;
     const content = JSON.parse(fs.readFileSync(CACHE_FILE, "utf-8"));
     const ageSeconds = (Date.now() - content.timestamp) / 1000;
     if (ageSeconds < maxAgeSeconds)
@@ -402,8 +401,6 @@ function saveFileCache(data) {
 }
 function isNegativeCached() {
   try {
-    if (!fs.existsSync(NEGATIVE_CACHE_FILE))
-      return false;
     const content = JSON.parse(fs.readFileSync(NEGATIVE_CACHE_FILE, "utf-8"));
     return (Date.now() - content.timestamp) / 1000 < NEGATIVE_CACHE_TTL_S;
   } catch {
@@ -456,15 +453,13 @@ function releaseLock(fd) {
 }
 
 // src/utils/config-counter.ts
-import * as fs2 from "node:fs";
-import * as path3 from "node:path";
-import * as os2 from "node:os";
+import * as fs2 from "fs";
+import * as path3 from "path";
+import * as os2 from "os";
 var CONFIG_CACHE_FILE = path3.join(os2.homedir(), ".claude", "claude-ultimate-hud-config-cache.json");
 var CONFIG_CACHE_TTL_MS = 60000;
 function loadConfigCache(cwd) {
   try {
-    if (!fs2.existsSync(CONFIG_CACHE_FILE))
-      return null;
     const raw = fs2.readFileSync(CONFIG_CACHE_FILE, "utf-8");
     const content = JSON.parse(raw);
     if (content.cwd !== cwd || Date.now() - content.timestamp > CONFIG_CACHE_TTL_MS)
@@ -646,10 +641,10 @@ async function countConfigs(cwd) {
 }
 
 // src/utils/transcript.ts
-import * as fs3 from "node:fs";
-import * as readline from "node:readline";
-import * as path4 from "node:path";
-import * as os3 from "node:os";
+import * as fs3 from "fs";
+import * as readline from "readline";
+import * as path4 from "path";
+import * as os3 from "os";
 var TRANSCRIPT_CACHE_FILE = path4.join(os3.homedir(), ".claude", "claude-ultimate-hud-transcript-cache.json");
 function isTranscriptLine(obj) {
   return typeof obj === "object" && obj !== null;
@@ -694,8 +689,6 @@ function deserializeAgentEntry(entry) {
 }
 function loadTranscriptCache(filePath, currentFileSize) {
   try {
-    if (!fs3.existsSync(TRANSCRIPT_CACHE_FILE))
-      return null;
     const content = JSON.parse(fs3.readFileSync(TRANSCRIPT_CACHE_FILE, "utf-8"));
     if (content.filePath === filePath && content.fileSize <= currentFileSize) {
       return content;
@@ -922,15 +915,13 @@ function extractTarget(toolName, input) {
 }
 
 // src/utils/git.ts
-import { existsSync as existsSync3, statSync as statSync2, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join4 } from "node:path";
-import { homedir as homedir4 } from "node:os";
+import { statSync as statSync2, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "fs";
+import { join as join4 } from "path";
+import { homedir as homedir4 } from "os";
 var GIT_CACHE_FILE = join4(homedir4(), ".claude", "claude-ultimate-hud-git-cache.json");
 var GIT_CACHE_TTL_MS = 120000;
 function loadGitCache(cwd) {
   try {
-    if (!existsSync3(GIT_CACHE_FILE))
-      return null;
     const raw = readFileSync3(GIT_CACHE_FILE, "utf-8");
     const content = JSON.parse(raw);
     if (content.cwd !== cwd || Date.now() - content.timestamp > GIT_CACHE_TTL_MS)
@@ -952,7 +943,7 @@ async function getGitInfo(cwd) {
   if (cached)
     return cached;
   try {
-    if (!existsSync3(cwd) || !statSync2(cwd).isDirectory())
+    if (!statSync2(cwd).isDirectory())
       return;
   } catch {
     return;
@@ -1014,29 +1005,29 @@ var EN = {
 };
 var KO = {
   labels: {
-    "5h": "5시간",
-    "7d": "7일",
-    "7d_all": "전체",
-    "7d_sonnet": "소넷"
+    "5h": "5\uC2DC\uAC04",
+    "7d": "7\uC77C",
+    "7d_all": "\uC804\uCCB4",
+    "7d_sonnet": "\uC18C\uB137"
   },
   time: {
-    hours: "시간",
-    minutes: "분",
-    shortHours: "시",
-    shortMinutes: "분"
+    hours: "\uC2DC\uAC04",
+    minutes: "\uBD84",
+    shortHours: "\uC2DC",
+    shortMinutes: "\uBD84"
   },
   errors: {
-    no_context: "컨텍스트 데이터 없음"
+    no_context: "\uCEE8\uD14D\uC2A4\uD2B8 \uB370\uC774\uD130 \uC5C6\uC74C"
   },
   contextWarning: {
-    warning: "컨텍스트 {pct}% - /compact 권장",
-    critical: "컨텍스트 {pct}% - /compact 필요!"
+    warning: "\uCEE8\uD14D\uC2A4\uD2B8 {pct}% - /compact \uAD8C\uC7A5",
+    critical: "\uCEE8\uD14D\uC2A4\uD2B8 {pct}% - /compact \uD544\uC694!"
   },
   todos: {
-    allComplete: "모든 할 일 완료"
+    allComplete: "\uBAA8\uB4E0 \uD560 \uC77C \uC644\uB8CC"
   },
   stats: {
-    thinking: "사고 중"
+    thinking: "\uC0AC\uACE0 \uC911"
   }
 };
 function getMacOSLocaleAsync() {
@@ -1068,7 +1059,7 @@ async function getTranslations(config) {
 }
 
 // src/render/session-line.ts
-var SEP = ` ${COLORS.dim}│${RESET} `;
+var SEP = ` ${COLORS.dim}\u2502${RESET} `;
 function renderSessionLine(ctx, t) {
   const parts = [];
   const modelName = shortenModelName(ctx.stdin.model.display_name);
@@ -1133,8 +1124,8 @@ function buildRateLimitsSection(ctx, t) {
 }
 
 // src/render/project-line.ts
-import path5 from "node:path";
-var SEP2 = ` ${COLORS.dim}│${RESET} `;
+import path5 from "path";
+var SEP2 = ` ${COLORS.dim}\u2502${RESET} `;
 function renderProjectLine(ctx) {
   const parts = [];
   if (ctx.stdin.cwd) {
@@ -1146,9 +1137,9 @@ function renderProjectLine(ctx) {
         gitStr += "*";
       const modifiers = [];
       if (ctx.gitInfo.ahead > 0)
-        modifiers.push(`↑${ctx.gitInfo.ahead}`);
+        modifiers.push(`\u2191${ctx.gitInfo.ahead}`);
       if (ctx.gitInfo.behind > 0)
-        modifiers.push(`↓${ctx.gitInfo.behind}`);
+        modifiers.push(`\u2193${ctx.gitInfo.behind}`);
       if (modifiers.length > 0)
         gitStr += ` ${modifiers.join(" ")}`;
       projectPart += ` ${magenta("git:(")}${cyan(gitStr)}${magenta(")")}`;
@@ -1168,7 +1159,7 @@ function renderProjectLine(ctx) {
     }
   }
   if (ctx.sessionDuration) {
-    parts.push(dim(`⏱️ ${ctx.sessionDuration}`));
+    parts.push(dim(`\u23F1\uFE0F ${ctx.sessionDuration}`));
   }
   return parts.join(SEP2);
 }
@@ -1183,7 +1174,7 @@ function renderToolsLine(ctx) {
   const completedTools = tools.filter((t) => t.status === "completed" || t.status === "error");
   for (const tool of runningTools.slice(-MAX_RUNNING_TOOLS)) {
     const target = tool.target ? truncatePath(tool.target) : "";
-    parts.push(`${yellow("◐")} ${cyan(tool.name)}${target ? dim(`: ${target}`) : ""}`);
+    parts.push(`${yellow("\u25D0")} ${cyan(tool.name)}${target ? dim(`: ${target}`) : ""}`);
   }
   const toolCounts = new Map;
   for (const tool of completedTools) {
@@ -1192,7 +1183,7 @@ function renderToolsLine(ctx) {
   }
   const sortedTools = Array.from(toolCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, MAX_COMPLETED_TOOL_TYPES);
   for (const [name, count] of sortedTools) {
-    parts.push(`${green("✓")} ${name} ${dim(`×${count}`)}`);
+    parts.push(`${green("\u2713")} ${name} ${dim(`\xD7${count}`)}`);
   }
   return parts.length > 0 ? parts.join(" | ") : null;
 }
@@ -1211,7 +1202,7 @@ function renderAgentsLine(ctx) {
 `);
 }
 function formatAgent(agent) {
-  const statusIcon = agent.status === "running" ? yellow("◐") : green("✓");
+  const statusIcon = agent.status === "running" ? yellow("\u25D0") : green("\u2713");
   const type = magenta(agent.type);
   const model = agent.model ? dim(`[${agent.model}]`) : "";
   const desc = agent.description ? dim(`: ${truncate(agent.description, MAX_AGENT_DESC_LENGTH)}`) : "";
@@ -1240,13 +1231,13 @@ function renderTodosLine(ctx, t) {
   const total = todos.length;
   if (!inProgress) {
     if (completed === total && total > 0) {
-      return `${green("✓")} ${t.todos.allComplete} ${dim(`(${completed}/${total})`)}`;
+      return `${green("\u2713")} ${t.todos.allComplete} ${dim(`(${completed}/${total})`)}`;
     }
     return null;
   }
   const content = truncate(inProgress.content, MAX_TODO_CONTENT_LENGTH);
   const progress = dim(`(${completed}/${total})`);
-  return `${yellow("▸")} ${content} ${progress}`;
+  return `${yellow("\u25B8")} ${content} ${progress}`;
 }
 
 // src/render/stats-line.ts
@@ -1273,7 +1264,7 @@ function renderStatsLine(ctx, t) {
   }
   if (parts.length === 0)
     return "";
-  return parts.join(` ${COLORS.dim}│${RESET} `);
+  return parts.join(` ${COLORS.dim}\u2502${RESET} `);
 }
 
 // src/render/context-warning.ts
@@ -1298,7 +1289,7 @@ function renderContextWarning(ctx, t) {
   }
   if (percent >= 80) {
     const template = t.contextWarning?.warning ?? "Context {pct}% - consider /compact";
-    return `${COLORS.yellow}⚠️ ${template.replace("{pct}", String(percent))}${RESET}`;
+    return `${COLORS.yellow}\u26A0\uFE0F ${template.replace("{pct}", String(percent))}${RESET}`;
   }
   return "";
 }
@@ -1316,13 +1307,18 @@ function render(ctx, t) {
     display.showTodos !== false ? renderTodosLine(ctx, t) : null,
     renderContextWarning(ctx, t)
   ].filter(Boolean);
+  const output = [];
   for (const line of lines) {
-    let outputLine = `${RESET}${line.replace(/ /g, " ")}`;
-    if (visualWidth(outputLine) > termWidth) {
+    let outputLine = `${RESET}${line.replace(/ /g, "\xA0")}`;
+    const plain = stripAnsi(outputLine);
+    if (plain.length > termWidth / 2 && visualWidth(outputLine) > termWidth) {
       outputLine = sliceVisible(outputLine, termWidth);
     }
-    console.log(outputLine);
+    output.push(outputLine);
   }
+  process.stdout.write(output.join(`
+`) + `
+`);
 }
 
 // src/index.ts
@@ -1331,7 +1327,7 @@ function isValidDirectory(p) {
   if (!p || !isAbsolute(p))
     return false;
   try {
-    return existsSync4(p) && statSync3(p).isDirectory();
+    return existsSync3(p) && statSync3(p).isDirectory();
   } catch {
     return false;
   }
@@ -1344,7 +1340,7 @@ function isValidTranscriptPath(p) {
   const claudeDir = join5(homedir5(), ".claude");
   try {
     const resolved = resolve2(p);
-    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync4(resolved);
+    return (resolved === claudeDir || resolved.startsWith(claudeDir + sep)) && existsSync3(resolved);
   } catch {
     return false;
   }
@@ -1352,18 +1348,18 @@ function isValidTranscriptPath(p) {
 async function readStdin() {
   let timerId;
   try {
-    const chunks = [];
-    const stdinRead = (async () => {
+    const stdinRead = typeof Bun !== "undefined" ? Bun.stdin.text() : (async () => {
+      const chunks = [];
       for await (const chunk of process.stdin) {
         chunks.push(Buffer.from(chunk));
       }
+      return Buffer.concat(chunks).toString("utf-8");
     })();
     const timeout = new Promise((_, reject) => {
       timerId = setTimeout(() => reject(new Error("stdin timeout")), STDIN_TIMEOUT_MS);
     });
-    await Promise.race([stdinRead, timeout]);
+    const content = await Promise.race([stdinRead, timeout]);
     clearTimeout(timerId);
-    const content = Buffer.concat(chunks).toString("utf-8");
     return JSON.parse(content);
   } catch (e) {
     clearTimeout(timerId);
@@ -1383,22 +1379,22 @@ async function loadConfig() {
 async function main() {
   const [config, stdin] = await Promise.all([loadConfig(), readStdin()]);
   if (!stdin) {
-    console.log(colorize("⚠️ stdin", COLORS.yellow));
+    console.log(colorize("\u26A0\uFE0F stdin", COLORS.yellow));
     return;
   }
   if (!stdin.model || typeof stdin.model.display_name !== "string" || !stdin.context_window || typeof stdin.context_window.context_window_size !== "number" || !stdin.cost) {
-    console.log(colorize("⚠️ stdin: missing fields", COLORS.yellow));
+    console.log(colorize("\u26A0\uFE0F stdin: missing fields", COLORS.yellow));
     return;
   }
   const transcriptPath = stdin.transcript_path ?? "";
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : "";
   const validCwd = isValidDirectory(stdin.cwd ?? "") ? stdin.cwd : undefined;
-  const [transcript, configCounts, gitInfo, rateLimits, t] = await Promise.all([
+  const t = await getTranslations(config);
+  const [transcript, configCounts, gitInfo, rateLimits] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitInfo(validCwd),
-    fetchUsageLimits(config.cache.ttlSeconds),
-    getTranslations(config)
+    fetchUsageLimits(config.cache.ttlSeconds)
   ]);
   const sessionDuration = stdin.total_duration_ms != null ? formatSessionDurationMs(stdin.total_duration_ms) : formatSessionDuration(transcript.sessionStart);
   const ctx = {
@@ -1414,5 +1410,5 @@ async function main() {
 }
 main().catch((e) => {
   debugError("main", e);
-  console.log(colorize("⚠️", COLORS.yellow));
+  console.log(colorize("\u26A0\uFE0F", COLORS.yellow));
 });

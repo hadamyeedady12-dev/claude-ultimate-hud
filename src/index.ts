@@ -46,18 +46,21 @@ function isValidTranscriptPath(p: string): boolean {
 async function readStdin(): Promise<StdinInput | null> {
   let timerId: ReturnType<typeof setTimeout> | undefined;
   try {
-    const chunks: Buffer[] = [];
-    const stdinRead = (async () => {
-      for await (const chunk of process.stdin) {
-        chunks.push(Buffer.from(chunk));
-      }
-    })();
+    // Use Bun.stdin for faster reading when available
+    const stdinRead = typeof Bun !== 'undefined'
+      ? Bun.stdin.text()
+      : (async () => {
+          const chunks: Buffer[] = [];
+          for await (const chunk of process.stdin) {
+            chunks.push(Buffer.from(chunk));
+          }
+          return Buffer.concat(chunks).toString('utf-8');
+        })();
     const timeout = new Promise<never>((_, reject) => {
       timerId = setTimeout(() => reject(new Error('stdin timeout')), STDIN_TIMEOUT_MS);
     });
-    await Promise.race([stdinRead, timeout]);
+    const content = await Promise.race([stdinRead, timeout]);
     clearTimeout(timerId);
-    const content = Buffer.concat(chunks).toString('utf-8');
     return JSON.parse(content) as StdinInput;
   } catch (e) {
     clearTimeout(timerId);
@@ -100,13 +103,15 @@ async function main(): Promise<void> {
   const validTranscriptPath = isValidTranscriptPath(transcriptPath) ? transcriptPath : '';
   const validCwd = isValidDirectory(stdin.cwd ?? '') ? stdin.cwd : undefined;
 
-  // Phase 2: Run all independent I/O operations in parallel (including i18n)
-  const [transcript, configCounts, gitInfo, rateLimits, t] = await Promise.all([
+  // Resolve translations synchronously when language is explicit (not 'auto')
+  const t = await getTranslations(config);
+
+  // Phase 2: Run independent I/O operations in parallel
+  const [transcript, configCounts, gitInfo, rateLimits] = await Promise.all([
     parseTranscript(validTranscriptPath),
     countConfigs(validCwd),
     getGitInfo(validCwd),
     fetchUsageLimits(config.cache.ttlSeconds),
-    getTranslations(config),
   ]);
 
   // Native duration vs transcript-based
