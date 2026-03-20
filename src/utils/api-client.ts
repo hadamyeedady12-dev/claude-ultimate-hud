@@ -150,7 +150,6 @@ function extractLimits(data: Record<string, unknown>): UsageLimits {
 
 function loadFileCache(maxAgeSeconds: number): UsageLimits | null {
   try {
-    if (!fs.existsSync(CACHE_FILE)) return null;
     const content = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
     const ageSeconds = (Date.now() - content.timestamp) / 1000;
     if (ageSeconds < maxAgeSeconds) return content.data as UsageLimits;
@@ -177,7 +176,6 @@ function saveFileCache(data: UsageLimits): void {
 
 function isNegativeCached(): boolean {
   try {
-    if (!fs.existsSync(NEGATIVE_CACHE_FILE)) return false;
     const content = JSON.parse(fs.readFileSync(NEGATIVE_CACHE_FILE, 'utf-8'));
     return (Date.now() - content.timestamp) / 1000 < NEGATIVE_CACHE_TTL_S;
   } catch {

@@ -9,7 +9,6 @@ const CONFIG_CACHE_TTL_MS = 60_000;
 
 function loadConfigCache(cwd: string): ConfigCounts | null {
   try {
-    if (!fs.existsSync(CONFIG_CACHE_FILE)) return null;
     const raw = fs.readFileSync(CONFIG_CACHE_FILE, 'utf-8');
     const content = JSON.parse(raw) as { cwd: string; timestamp: number; data: ConfigCounts };
     if (content.cwd !== cwd || Date.now() - content.timestamp > CONFIG_CACHE_TTL_MS) return null;

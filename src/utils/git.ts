@@ -17,7 +17,6 @@ interface GitCache {
 
 function loadGitCache(cwd: string): GitInfo | null {
   try {
-    if (!existsSync(GIT_CACHE_FILE)) return null;
     const raw = readFileSync(GIT_CACHE_FILE, 'utf-8');
     const content = JSON.parse(raw) as GitCache;
     if (content.cwd !== cwd || Date.now() - content.timestamp > GIT_CACHE_TTL_MS) return null;

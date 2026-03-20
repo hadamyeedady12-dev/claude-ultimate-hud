@@ -114,9 +114,7 @@ function deserializeAgentEntry(entry: SerializedAgentEntry): AgentEntry {
 
 function loadTranscriptCache(filePath: string, currentFileSize: number): TranscriptCache | null {
   try {
-    if (!fs.existsSync(TRANSCRIPT_CACHE_FILE)) return null;
     const content = JSON.parse(fs.readFileSync(TRANSCRIPT_CACHE_FILE, 'utf-8')) as TranscriptCache;
-    // Valid if same file and file hasn't shrunk (shrink = new session)
     if (content.filePath === filePath && content.fileSize <= currentFileSize) {
       return content;
     }
