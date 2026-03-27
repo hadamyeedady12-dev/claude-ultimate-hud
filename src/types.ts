@@ -27,7 +27,7 @@ export interface StdinInput {
 
 export interface Config {
   language: 'en' | 'ko' | 'auto';
-  plan: 'pro' | 'max100' | 'max200';
+  plan: 'pro' | 'max100' | 'max200' | 'enterprise';
   cache: {
     ttlSeconds: number;
   };
@@ -124,6 +124,7 @@ export interface Translations {
     '7d': string;
     '7d_all': string;
     '7d_sonnet': string;
+    cost: string;
   };
   time: {
     hours: string;

@@ -981,7 +981,8 @@ var EN = {
     "5h": "5h",
     "7d": "7d",
     "7d_all": "all",
-    "7d_sonnet": "Sonnet"
+    "7d_sonnet": "Sonnet",
+    cost: "Cost"
   },
   time: {
     hours: " hours",
@@ -1008,7 +1009,8 @@ var KO = {
     "5h": "5\uC2DC\uAC04",
     "7d": "7\uC77C",
     "7d_all": "\uC804\uCCB4",
-    "7d_sonnet": "\uC18C\uB137"
+    "7d_sonnet": "\uC18C\uB137",
+    cost: "\uBE44\uC6A9"
   },
   time: {
     hours: "\uC2DC\uAC04",
@@ -1088,8 +1090,32 @@ function renderSessionLine(ctx, t) {
   }
   return parts.join(SEP);
 }
+function formatCostUsd(cost) {
+  if (cost >= 100)
+    return `$${Math.round(cost)}`;
+  if (cost >= 10)
+    return `$${cost.toFixed(1)}`;
+  return `$${cost.toFixed(2)}`;
+}
 function buildRateLimitsSection(ctx, t) {
   const limits = ctx.rateLimits;
+  const isEnterprise = ctx.config.plan === "enterprise";
+  if (isEnterprise) {
+    const parts2 = [];
+    const cost = ctx.stdin.cost.total_cost_usd;
+    parts2.push(`${t.labels.cost}: ${colorize(`\uD83D\uDCB0 ${formatCostUsd(cost)}`, COLORS.cyan)}`);
+    if (limits?.five_hour) {
+      const pct = Math.round(limits.five_hour.utilization);
+      const color = getColorForPercent(pct);
+      let text = `${t.labels["5h"]}: ${colorize(`${pct}%`, color)}`;
+      if (limits.five_hour.resets_at) {
+        const remaining = formatTimeRemaining(limits.five_hour.resets_at, t);
+        text += ` (${remaining})`;
+      }
+      parts2.push(text);
+    }
+    return parts2.length > 0 ? parts2.join(SEP) : null;
+  }
   if (!limits)
     return colorize("\uD83D\uDD11 ?", COLORS.yellow);
   const parts = [];

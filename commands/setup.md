@@ -28,6 +28,7 @@ Use `AskUserQuestion` to ask for both language and plan in a **single call** (up
   - `max200`: Max $200/mo (20x) - 5h + 7d all + 7d Sonnet (Recommended)
   - `max100`: Max $100/mo (5x) - 5h + 7d all + 7d Sonnet
   - `pro`: Pro - 5h only
+  - `enterprise`: Enterprise - Cost in $ + 5h
 
 Use the selected values for the rest of the setup.
 
@@ -42,6 +43,7 @@ Use the selected values for the rest of the setup.
   - `pro`: Shows 5h rate limit only
   - `max100`: Shows 5h + 7d all + 7d Sonnet (Max $100/월 플랜)
   - `max200` (default): Shows 5h + 7d all + 7d Sonnet (Max $200/월 플랜)
+  - `enterprise`: Shows cost in $ + 5h rate limit (Enterprise 플랜)
 
 ## Step 1: Detect Platform & Runtime
 
@@ -150,11 +152,12 @@ The HUD should appear below the input field on the next message.
 
 ## Plan Differences
 
-| Feature | pro | max100 | max200 |
-|---------|-----|--------|--------|
-| 5h rate limit | ✅ | ✅ | ✅ |
-| 7d all models | ❌ | ✅ | ✅ |
-| 7d Sonnet | ❌ | ✅ | ✅ |
+| Feature | pro | max100 | max200 | enterprise |
+|---------|-----|--------|--------|------------|
+| 5h rate limit | ✅ | ✅ | ✅ | ✅ |
+| 7d all models | ❌ | ✅ | ✅ | ❌ |
+| 7d Sonnet | ❌ | ✅ | ✅ | ❌ |
+| Cost ($) | ❌ | ❌ | ❌ | ✅ |
 
 ### Rate Limits by Plan
 

@@ -133,6 +133,7 @@ Running the command will show an interactive menu to select your plan:
 | `max200` | Max $200/month (20x) - 5h + 7d all + 7d Sonnet |
 | `max100` | Max $100/month (5x) - 5h + 7d all + 7d Sonnet **(Default)** |
 | `pro` | Pro - 5h only |
+| `enterprise` | Enterprise - Cost ($) + 5h |
 
 Setup will ask for both **language** and **plan** preferences. To change later, edit `~/.claude/claude-ultimate-hud.local.json` and set `language` to `en`, `ko`, or `auto`.
 
@@ -151,12 +152,13 @@ Setup will ask for both **language** and **plan** preferences. To change later, 
 
 ## Plan Differences
 
-| Feature | pro | max100 | max200 |
-|---------|-----|--------|--------|
-| 5h rate limit | ✅ | ✅ | ✅ |
-| Reset countdown | ✅ | ✅ | ✅ |
-| 7d all models | ❌ | ✅ | ✅ |
-| 7d Sonnet only | ❌ | ✅ | ✅ |
+| Feature | pro | max100 | max200 | enterprise |
+|---------|-----|--------|--------|------------|
+| 5h rate limit | ✅ | ✅ | ✅ | ✅ |
+| Reset countdown | ✅ | ✅ | ✅ | ✅ |
+| 7d all models | ❌ | ✅ | ✅ | ❌ |
+| 7d Sonnet only | ❌ | ✅ | ✅ | ❌ |
+| Cost ($) | ❌ | ❌ | ❌ | ✅ |
 
 ### Rate Limits Detail
 
