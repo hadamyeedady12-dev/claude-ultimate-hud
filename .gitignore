@@ -10,3 +10,6 @@ bun.lockb
 *.pfx
 credentials*.json
 *.secret
+# Dev / benchmark artifacts
+results.tsv
+bench*.ts
