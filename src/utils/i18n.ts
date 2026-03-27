@@ -8,6 +8,7 @@ const EN: Translations = {
     '7d': '7d',
     '7d_all': 'all',
     '7d_sonnet': 'Sonnet',
+    cost: 'Cost',
   },
   time: {
     hours: ' hours',
@@ -36,6 +37,7 @@ const KO: Translations = {
     '7d': '7일',
     '7d_all': '전체',
     '7d_sonnet': '소넷',
+    cost: '비용',
   },
   time: {
     hours: '시간',

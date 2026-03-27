@@ -59,8 +59,36 @@ export function renderSessionLine(ctx: RenderContext, t: Translations): string {
   return parts.join(SEP);
 }
 
+function formatCostUsd(cost: number): string {
+  if (cost >= 100) return `$${Math.round(cost)}`;
+  if (cost >= 10) return `$${cost.toFixed(1)}`;
+  return `$${cost.toFixed(2)}`;
+}
+
 function buildRateLimitsSection(ctx: RenderContext, t: Translations): string | null {
   const limits = ctx.rateLimits;
+  const isEnterprise = ctx.config.plan === 'enterprise';
+
+  // Enterprise plan: show cost in $ instead of rate limit %
+  if (isEnterprise) {
+    const parts: string[] = [];
+    const cost = ctx.stdin.cost.total_cost_usd;
+    parts.push(`${t.labels.cost}: ${colorize(`💰 ${formatCostUsd(cost)}`, COLORS.cyan)}`);
+
+    if (limits?.five_hour) {
+      const pct = Math.round(limits.five_hour.utilization);
+      const color = getColorForPercent(pct);
+      let text = `${t.labels['5h']}: ${colorize(`${pct}%`, color)}`;
+      if (limits.five_hour.resets_at) {
+        const remaining = formatTimeRemaining(limits.five_hour.resets_at, t);
+        text += ` (${remaining})`;
+      }
+      parts.push(text);
+    }
+
+    return parts.length > 0 ? parts.join(SEP) : null;
+  }
+
   if (!limits) return colorize('🔑 ?', COLORS.yellow);
 
   const parts: string[] = [];
