@@ -22,6 +22,12 @@ Ultimate status line plugin for Claude Code - combines the best of [claude-dashb
 - 🤖 **Agent Status**: Subagent progress tracking
 - ✅ **Todo Progress**: Current task and completion rate
 
+### v1.6.0 - Enterprise Plan Support
+- 🏢 **Enterprise Plan**: Added `plan: "enterprise"` option for Enterprise users
+- 💰 **Cost Display ($)**: Enterprise plan shows usage in dollars ($) instead of message count (%)
+- ⏱️ **5h Rate Limit**: Enterprise still shows 5-hour rate limit with reset countdown
+- 🌐 **i18n**: Added Cost/비용 labels for English/Korean
+
 ### v1.5.2 - Remove Burn Rate
 - 🗑️ **Remove Burn Rate**: Completely removed `🔥 14K tok/min` display — deleted `speed-tracker.ts` utility, `BURN_RATE_WINDOW_MS` constant, and `burnRate` field
 - 📦 **Lighter Bundle**: Removed unused token speed tracking code and cache file (`claude-ultimate-hud-speed-cache.json`)
@@ -194,6 +200,12 @@ You can toggle individual widgets in `~/.claude/claude-ultimate-hud.local.json`:
 ```
 
 ## Changelog
+
+### v1.6.0
+- 🏢 **Enterprise Plan**: Added `plan: "enterprise"` option for Enterprise users
+- 💰 **Cost Display ($)**: Enterprise shows usage in dollars (`💰 $1.23`) instead of message %
+- ⏱️ **5h Rate Limit**: Enterprise retains 5-hour rate limit with reset countdown
+- 🌐 **i18n**: Added Cost/비용 labels for English/Korean
 
 ### v1.5.1
 - 🔧 **Shared execFileAsync**: Extracted duplicate function from 3 files into `utils/exec.ts` (ExecFileOptions typing)

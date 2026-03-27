@@ -22,6 +22,12 @@ Claude Code를 위한 궁극의 상태 표시줄 플러그인 - [claude-dashboar
 - 🤖 **에이전트 상태**: 서브에이전트 진행 상황
 - ✅ **TODO 진행률**: 현재 작업 및 완료율
 
+### v1.6.0 - Enterprise 플랜 지원
+- 🏢 **Enterprise 플랜 추가**: `plan: "enterprise"` 설정으로 Enterprise 사용자 지원
+- 💰 **비용($) 표시**: Enterprise 플랜은 사용량을 메시지 횟수(%) 대신 달러($) 단위로 표시
+- ⏱️ **5시간 rate limit 유지**: Enterprise에서도 5시간 rate limit 및 리셋 카운트다운 표시
+- 🌐 **i18n 확장**: 비용(Cost/비용) 라벨 한국어/영어 지원
+
 ### v1.5.2 - Burn Rate 제거
 - 🗑️ **Burn rate 제거**: `🔥 14K tok/min` 표시 완전 삭제 — `speed-tracker.ts` 유틸리티, `BURN_RATE_WINDOW_MS` 상수, `burnRate` 필드 일괄 제거
 - 📦 **번들 경량화**: 미사용 토큰 속도 추적 코드 및 캐시 파일(`claude-ultimate-hud-speed-cache.json`) 제거
@@ -194,6 +200,12 @@ bun install && bun run build
 ```
 
 ## 변경 이력
+
+### v1.6.0
+- 🏢 **Enterprise 플랜 추가**: `plan: "enterprise"` 설정으로 Enterprise 사용자 지원
+- 💰 **비용($) 표시**: Enterprise 플랜은 사용량을 달러($) 단위로 표시 (`💰 $1.23`)
+- ⏱️ **5시간 rate limit**: Enterprise에서도 5시간 rate limit 및 리셋 카운트다운 유지
+- 🌐 **i18n**: 비용(Cost/비용) 라벨 한국어/영어 추가
 
 ### v1.5.1
 - 🔧 **공유 execFileAsync**: 3개 파일의 중복 함수를 `utils/exec.ts`로 추출 (ExecFileOptions 타이핑)
