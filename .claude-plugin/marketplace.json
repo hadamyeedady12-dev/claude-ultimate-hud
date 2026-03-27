@@ -5,14 +5,14 @@
     "email": ""
   },
   "metadata": {
-    "description": "Ultimate status line with API stability, git extensions, token breakdown, widget toggles, surrogate pair fix, Agent detection, shared exec module, and performance optimization",
-    "version": "1.5.2"
+    "description": "Ultimate status line with Enterprise plan support ($), API stability, git extensions, token breakdown, widget toggles, and performance optimization",
+    "version": "1.6.0"
   },
   "plugins": [
     {
       "name": "claude-ultimate-hud",
       "source": "./",
-      "description": "All-in-one status line: model info, context usage, rate limits (5h/7d), project details with git branch (dirty/ahead/behind), token breakdown, CLAUDE.md/rules/MCPs/hooks counts, tool activity, agent status, and todo progress. Supports Max and Pro plans with i18n (English/Korean).",
+      "description": "All-in-one status line: model info, context usage, rate limits (5h/7d), project details with git branch (dirty/ahead/behind), token breakdown, CLAUDE.md/rules/MCPs/hooks counts, tool activity, agent status, and todo progress. Supports Enterprise, Max, and Pro plans with i18n (English/Korean).",
       "category": "monitoring",
       "tags": ["statusline", "hud", "monitoring", "rate-limits", "tools", "agents", "todos", "i18n", "git"]
     }
